@@ -1,4 +1,4 @@
-const CACHE_NAME = "cultured-nudgers-v91";
+const CACHE_NAME = "cultured-nudgers-v105";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,9 +6,11 @@ const ASSETS = [
   "./app.js",
   "./manifest.json",
   "./assets/icons/icon.svg",
+  "./assets/icons/app-logo.png",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
   "./assets/icons/apple-touch-icon.png",
+  "./assets/images/homepage-logo.png",
   "./assets/images/tours/2016-morocco.jpg",
   "./assets/images/tours/2017-monte-rei.jpg",
   "./assets/images/tours/2018-laranjal.webp",

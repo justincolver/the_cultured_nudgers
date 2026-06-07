@@ -743,10 +743,12 @@ function icon(name) {
     badge: '<rect x="5" y="4" width="14" height="16" rx="3"/><path d="M9 9h6M9 13l2 2 4-5"/>',
     calendar: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
     chart: '<path d="M5 19V9M12 19V5M19 19v-8"/>',
+    pin: '<path d="M12 21s7-5.3 7-11a7 7 0 0 0-14 0c0 5.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 14.5-4 16 0"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
     bell: '<path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
     back: '<path d="m15 18-6-6 6-6"/>',
+    chevron: '<path d="m9 18 6-6-6-6"/>',
     share: '<path d="M16 6h3v14H5V6h3"/><path d="M12 3v11M8 7l4-4 4 4"/>',
     more: '<circle cx="12" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
     trophy: '<path d="M8 5h8v4a4 4 0 0 1-8 0V5Z"/><path d="M8 7H5a3 3 0 0 0 3 4M16 7h3a3 3 0 0 1-3 4M12 13v5M9 21h6"/>',
@@ -762,11 +764,7 @@ function icon(name) {
 
 function Logo() {
   return `
-    <div class="logo-mark" aria-label="The Cultured Nudgers">
-      <div class="logo-ring">THE CULTURED<br><span>NUDGERS</span></div>
-      <div class="logo-players">♟</div>
-      <small>EST. 2014</small>
-    </div>
+    <img class="home-logo-image" src="assets/images/homepage-logo.png" alt="The Cultured Nudgers" />
   `;
 }
 
@@ -803,6 +801,17 @@ function HeroCard(tour, extra = "") {
         ${extra}
         <h2>${tour.title}</h2>
         <p>${tour.dates}</p>
+      </div>
+    </section>
+  `;
+}
+
+function PageHero(title, subtitle = "") {
+  return `
+    <section class="page-hero">
+      <div>
+        <h1>${escapeHtml(title)}</h1>
+        ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
       </div>
     </section>
   `;
@@ -881,9 +890,23 @@ function Home() {
   }
 
   const next = tours[0];
+  const previous = latestCompletedTour();
+  const daysSincePrevious = daysBetweenDates(previous?.endDate);
+  const daysUntilNext = daysUntilDate(next.startDate);
+  const samFoster = allPlayers.find((player) => player.player_name === "Sam Foster");
+  const nextDateLabel = next.startDate && next.endDate
+    ? `${new Date(`${next.startDate}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric" })} - ${new Date(`${next.endDate}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+    : next.dates;
   return `
     ${Header()}
-    <section class="home-logo">${Logo()}<p>Welcome back, Nudger 👋</p></section>
+    <section class="home-logo">
+      ${Logo()}
+      <p>Welcome back, Nudger 👋</p>
+      <div class="home-tour-clock">
+        ${daysSincePrevious !== null && previous ? `<span>${daysSincePrevious} days since ${escapeHtml(tourDisplayName(previous))}</span>` : ""}
+        ${daysUntilNext !== null ? `<b>${daysUntilNext} days until ${escapeHtml(tourDisplayName(next))}</b>` : ""}
+      </div>
+    </section>
     <section class="next-tour" style="background-image: linear-gradient(180deg, rgba(255,255,255,.05), rgba(3,19,13,.54)), url('${next.image}')">
       <span>Next Tour</span>
       <h2>${next.title}</h2>
@@ -891,12 +914,23 @@ function Home() {
         <b data-countdown-days>--</b><i>:</i><b data-countdown-hours>--</b><i>:</i><b data-countdown-minutes>--</b><i>:</i><b data-countdown-seconds>--</b>
       </div>
       <div class="count-labels"><span>Days</span><span>Hrs</span><span>Mins</span><span>Secs</span></div>
-      <p>⌖ ${next.location}<br>${next.startDate ? `Starts ${new Date(`${next.startDate}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : next.dates}</p>
+      <div class="next-tour-footer">
+        <div class="next-tour-meta">
+          <span>${icon("pin")}${escapeHtml(next.location)}</span>
+          <span>${icon("calendar")}${escapeHtml(nextDateLabel)}</span>
+        </div>
+        <button class="next-tour-cta" data-action="home-view-tour">View Tour ${icon("chevron")}</button>
+      </div>
     </section>
     <section class="defending-card ${state.defendingChampions?.side || "neutral"}">
-      <span>Defending Champions</span>
-      <strong>${escapeHtml(state.defendingChampions?.team || "Loading...")}</strong>
-      <small>${escapeHtml(state.defendingChampions?.tour || "")}${state.defendingChampions?.score ? ` · ${escapeHtml(state.defendingChampions.score)}` : ""}</small>
+      <div>
+        <span>Defending Champions</span>
+        <strong>${escapeHtml(state.defendingChampions?.team || "Loading...")}</strong>
+        <small>${escapeHtml(state.defendingChampions?.tour || "")}${state.defendingChampions?.score ? ` · ${escapeHtml(state.defendingChampions.score)}` : ""}</small>
+      </div>
+      <div class="defending-player">
+        ${Avatar(samFoster, "defending-avatar")}
+      </div>
     </section>
     <section class="tour-wins-card">
       <span>All-Time Tour Score</span>
@@ -936,7 +970,7 @@ function updateCountdown() {
 }
 
 function Tours() {
-  return `${Header("Tours")}<div class="tour-list">${tours.map(TourCard).join("")}</div>`;
+  return `${PageHero("Tours")}<div class="page-body"><div class="tour-list">${tours.map(TourCard).join("")}</div></div>`;
 }
 
 function TourOverview() {
@@ -993,6 +1027,37 @@ function formatTeamPoints(points) {
   if (points === 0.5) return "1/2";
   if (Number.isInteger(points)) return String(points);
   return String(points).replace(".5", "½");
+}
+
+function daysBetweenDates(fromDate, toDate = new Date()) {
+  if (!fromDate) return null;
+  const start = new Date(`${fromDate}T00:00:00`);
+  const end = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+  return Math.max(0, Math.ceil((end - start) / 86400000));
+}
+
+function daysUntilDate(toDate, fromDate = new Date()) {
+  if (!toDate) return null;
+  const end = new Date(`${toDate}T00:00:00`);
+  return Math.max(0, Math.floor((end - fromDate) / 86400000));
+}
+
+function latestCompletedTour() {
+  return tours.find((tour) => tour.status === "Completed");
+}
+
+function tourDisplayName(tour) {
+  return String(tour?.destination || tour?.shortTitle || tour?.title || "")
+    .replace(/\s+\d{4}\b/g, "")
+    .replace(/[^\w\s&-]/g, "")
+    .trim();
+}
+
+function formatResultHeaderPoints(points) {
+  if (points === 0.5) return `<span class="score-half-only">½</span>`;
+  if (Number.isInteger(points)) return String(points);
+  const whole = Math.floor(points);
+  return `${whole}<span class="score-half">½</span>`;
 }
 
 function formatTeamNames(names = "") {
@@ -1079,9 +1144,9 @@ function TourResults(tour) {
         <div class="result-table overall-table">
           <div class="result-score-head">
             <span class="score-team crocs">Team Crocombe</span>
-            <b class="score-total crocs">${formatTeamPoints(teamPointsForRows(rows).crocs)}</b>
+            <b class="score-total crocs">${formatResultHeaderPoints(teamPointsForRows(rows).crocs)}</b>
             <i></i>
-            <b class="score-total foz">${formatTeamPoints(teamPointsForRows(rows).foz)}</b>
+            <b class="score-total foz">${formatResultHeaderPoints(teamPointsForRows(rows).foz)}</b>
             <span class="score-team foz">Team Foster</span>
           </div>
         </div>
@@ -1093,9 +1158,9 @@ function TourResults(tour) {
           <div class="result-table">
             <div class="result-score-head">
               <span class="score-team crocs">Team Crocombe</span>
-              <b class="score-total crocs">${formatTeamPoints(teamPointsForRows(dayRows).crocs)}</b>
+              <b class="score-total crocs">${formatResultHeaderPoints(teamPointsForRows(dayRows).crocs)}</b>
               <i></i>
-              <b class="score-total foz">${formatTeamPoints(teamPointsForRows(dayRows).foz)}</b>
+              <b class="score-total foz">${formatResultHeaderPoints(teamPointsForRows(dayRows).foz)}</b>
               <span class="score-team foz">Team Foster</span>
             </div>
             <div class="result-gap"></div>
@@ -1132,7 +1197,7 @@ function TourProfileRail(profileRows) {
         const player = getPlayerById(row.player_id);
         const playerName = player?.player_name || `Player ${row.player_id}`;
         return `
-          <button class="tour-rail-face" data-action="jump-tour-profile" data-profile-id="${row.id}" aria-label="${escapeHtml(playerName)}">
+          <button class="tour-rail-face" data-action="jump-tour-profile" data-profile-id="${row.id}" aria-label="${escapeHtml(playerName)}" aria-current="false">
             ${Avatar(player, "tour-rail-avatar")}
           </button>
         `;
@@ -1751,18 +1816,20 @@ function OverviewLeaderboard(records = []) {
 }
 
 function Stats() {
+  const statTabs = ["Overview", "Head-to-Head", "Individual"];
+  if (!statTabs.includes(state.statSubTab)) state.statSubTab = "Overview";
+
   return `
+    ${PageHero("Stats")}
     <div class="stats-sticky">
-      ${Header("Stats")}
       <nav class="subnav top">
-        ${["Overview", "Head-to-Head", "Individual", "Records", "Fun Stats"].map((x) => `<button class="${x === state.statSubTab ? "active" : ""}" data-action="stat-tab" data-tab="${x}">${x}</button>`).join("")}
+        ${statTabs.map((x) => `<button class="${x === state.statSubTab ? "active" : ""}" data-action="stat-tab" data-tab="${x}">${x}</button>`).join("")}
       </nav>
     </div>
     <div class="stats-body">
       ${state.statSubTab === "Overview" ? StatsOverview() : ""}
       ${state.statSubTab === "Head-to-Head" ? HeadToHeadStats() : ""}
       ${state.statSubTab === "Individual" ? IndividualStats() : ""}
-      ${!["Overview", "Head-to-Head", "Individual"].includes(state.statSubTab) ? Card(`<p class="empty-state">${state.statSubTab} coming soon.</p>`) : ""}
     </div>
   `;
 }
@@ -1902,32 +1969,34 @@ function Profiles() {
 
   if (state.touristDataLoading) {
     return `
-      ${Header("Tourists")}
-      ${Card(`<p class="empty-state">Loading tourist profiles...</p>`)}
+      ${PageHero("Tourists")}
+      <div class="page-body">${Card(`<p class="empty-state">Loading tourist profiles...</p>`)}</div>
     `;
   }
 
   if (state.touristDataError) {
     return `
-      ${Header("Tourists")}
-      ${Card(`<p class="empty-state">${escapeHtml(state.touristDataError)}</p>`)}
+      ${PageHero("Tourists")}
+      <div class="page-body">${Card(`<p class="empty-state">${escapeHtml(state.touristDataError)}</p>`)}</div>
     `;
   }
 
   return `
-    ${Header("Tourists")}
-    ${
-      state.touristProfileOpen
-        ? TouristProfilePage(touristPlayers[selectedIndex])
-        : TouristRoster(touristPlayers, selectedIndex)
-    }
+    ${PageHero("Tourists")}
+    <div class="page-body">
+      ${
+        state.touristProfileOpen
+          ? TouristProfilePage(touristPlayers[selectedIndex])
+          : TouristRoster(touristPlayers, selectedIndex)
+      }
+    </div>
   `;
 }
 
 function Media() {
   return `
-    ${Header("Pictures & Media")}
-    ${Card(`<p class="empty-state">Pictures & Media coming soon.</p>`)}
+    ${PageHero("Pictures & Media")}
+    <div class="page-body">${Card(`<p class="empty-state">Pictures & Media coming soon.</p>`)}</div>
   `;
 }
 
@@ -2019,6 +2088,7 @@ function restoreRoute() {
   if (state.detailSubTab === "Gallery") state.detailSubTab = "Teams";
   if (requestedTab === "this-tour" && !params.has("detail")) state.detailSubTab = "Overview";
   state.statSubTab = params.get("stat") || saved.statSubTab || state.statSubTab;
+  if (!["Overview", "Head-to-Head", "Individual"].includes(state.statSubTab)) state.statSubTab = "Overview";
   state.playerIndex = Number(params.get("player") || saved.playerIndex || state.playerIndex);
   state.selectedPlayerAId = Number(params.get("pa") || saved.selectedPlayerAId || state.selectedPlayerAId) || null;
   state.selectedPlayerBId = Number(params.get("pb") || saved.selectedPlayerBId || state.selectedPlayerBId) || null;
@@ -2034,6 +2104,7 @@ function restoreScrollPosition() {
   state.restoredScrollTop = 0;
   requestAnimationFrame(() => {
     content.scrollTo({ top: scrollTop, behavior: "instant" });
+    updateActiveTourProfileRail();
   });
 }
 
@@ -2060,6 +2131,7 @@ function render() {
   `;
   updateCountdown();
   restoreScrollPosition();
+  requestAnimationFrame(updateActiveTourProfileRail);
 }
 
 app.addEventListener("click", (event) => {
@@ -2099,6 +2171,12 @@ app.addEventListener("click", (event) => {
       state.detailTour = target.dataset.tour;
       state.detailSubTab = "Overview";
     }
+  }
+  if (action === "home-view-tour") {
+    state.restoredScrollTop = 0;
+    state.tab = "this-tour";
+    state.detailTour = null;
+    state.detailSubTab = "Overview";
   }
   if (action === "back") {
     state.restoredScrollTop = 0;
@@ -2175,12 +2253,56 @@ function jumpToTourProfile(profileId) {
   if (!target) return;
 
   const content = document.querySelector(".content");
-  const fixedHeaderHeight = 192;
-  const targetTop = target.getBoundingClientRect().top + (content?.scrollTop || 0) - fixedHeaderHeight;
+  const targetTop = target.getBoundingClientRect().top + (content?.scrollTop || 0) - tourProfileTopOffset();
   content?.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
+  updateActiveTourProfileRail(profileId);
 }
 
-document.addEventListener("scroll", () => persistRoute(), true);
+function tourProfileTopOffset() {
+  const detailTabs = document.querySelector(".detail-tabs");
+  return (detailTabs?.getBoundingClientRect().bottom || 176) + 20;
+}
+
+function updateActiveTourProfileRail(forcedProfileId = null) {
+  const rail = document.querySelector(".tour-profile-rail");
+  if (!rail) return;
+
+  const cards = Array.from(document.querySelectorAll(".tour-profile-card"));
+  if (!cards.length) return;
+
+  const probeY = tourProfileTopOffset() + 6;
+  const activeCard = forcedProfileId
+    ? document.getElementById(`tour-profile-${forcedProfileId}`)
+    : cards.reduce((closest, card) => {
+        const rect = card.getBoundingClientRect();
+        if (rect.top <= probeY && rect.bottom > probeY) return card;
+        if (!closest) return card;
+        const closestRect = closest.getBoundingClientRect();
+        return Math.abs(rect.top - probeY) < Math.abs(closestRect.top - probeY) ? card : closest;
+      }, null);
+
+  const activeId = activeCard?.id?.replace("tour-profile-", "");
+  if (!activeId) return;
+
+  let activeButton = null;
+  rail.querySelectorAll(".tour-rail-face").forEach((button) => {
+    if (button.dataset.profileId === activeId) activeButton = button;
+  });
+
+  rail.querySelectorAll(".tour-rail-face").forEach((button) => {
+    const isActive = button === activeButton;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-current", isActive ? "true" : "false");
+  });
+
+  activeButton?.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+document.addEventListener("scroll", (event) => {
+  if (event.target?.closest?.(".tour-profile-rail")) return;
+  persistRoute();
+  updateActiveTourProfileRail();
+}, true);
 window.addEventListener("resize", render);
 restoreRoute();
 render();
