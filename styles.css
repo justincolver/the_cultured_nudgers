@@ -454,14 +454,14 @@ svg {
 .detail-hero {
   display: flex;
   align-items: end;
-  min-height: 146px;
-  margin: -70px -22px 0;
-  padding: 92px 28px 18px;
+  min-height: 102px;
+  margin: -32px -22px 0;
+  padding: 48px 28px 14px;
 }
 
 .detail-hero h2 {
-  margin-bottom: 8px;
-  font-size: 28px;
+  margin-bottom: 5px;
+  font-size: 25px;
 }
 
 .detail-hero p,
@@ -471,6 +471,9 @@ svg {
 }
 
 .subnav {
+  position: sticky;
+  top: env(safe-area-inset-top);
+  z-index: 18;
   display: flex;
   gap: 4px;
   margin: 12px -6px 4px;
@@ -478,6 +481,7 @@ svg {
   background: rgba(12, 49, 36, .82);
   border: 1px solid rgba(255, 255, 255, .06);
   border-radius: 12px;
+  box-shadow: 0 14px 24px rgba(1, 9, 7, .55);
   scrollbar-width: none;
 }
 
@@ -1377,7 +1381,7 @@ svg {
 
 .tour-profile-rail {
   position: fixed;
-  top: min(285px, calc(34dvh + env(safe-area-inset-top)));
+  top: calc(164px + env(safe-area-inset-top));
   right: 10px;
   bottom: calc(78px + env(safe-area-inset-bottom));
   z-index: 8;
@@ -1391,7 +1395,7 @@ svg {
   border: 1px solid rgba(248, 242, 223, .12);
   border-radius: 999px;
   box-shadow: 0 16px 34px rgba(0, 0, 0, .28);
-  touch-action: none;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
 

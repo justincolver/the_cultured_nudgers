@@ -2166,42 +2166,14 @@ app.addEventListener("click", (event) => {
   persistRoute();
 });
 
-let activeRailPointerId = null;
-
 function jumpToTourProfile(profileId) {
   const target = document.getElementById(`tour-profile-${profileId}`);
   if (!target) return;
 
   const content = document.querySelector(".content");
   const targetTop = target.getBoundingClientRect().top + (content?.scrollTop || 0) - 92;
-  content?.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  content?.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
 }
-
-function jumpToRailFaceFromPoint(clientX, clientY) {
-  const face = document.elementFromPoint(clientX, clientY)?.closest?.("[data-action='jump-tour-profile']");
-  if (!face) return;
-  jumpToTourProfile(face.dataset.profileId);
-}
-
-app.addEventListener("pointerdown", (event) => {
-  const face = event.target.closest("[data-action='jump-tour-profile']");
-  if (!face) return;
-  activeRailPointerId = event.pointerId;
-  jumpToTourProfile(face.dataset.profileId);
-});
-
-app.addEventListener("pointermove", (event) => {
-  if (activeRailPointerId !== event.pointerId) return;
-  jumpToRailFaceFromPoint(event.clientX, event.clientY);
-});
-
-app.addEventListener("pointerup", (event) => {
-  if (activeRailPointerId === event.pointerId) activeRailPointerId = null;
-});
-
-app.addEventListener("pointercancel", (event) => {
-  if (activeRailPointerId === event.pointerId) activeRailPointerId = null;
-});
 
 document.addEventListener("scroll", () => persistRoute(), true);
 window.addEventListener("resize", render);
