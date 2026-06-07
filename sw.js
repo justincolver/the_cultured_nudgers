@@ -1,4 +1,4 @@
-const CACHE_NAME = "cultured-nudgers-v68";
+const CACHE_NAME = "cultured-nudgers-v70";
 const ASSETS = [
   "./",
   "./index.html",
@@ -31,7 +31,7 @@ const ASSETS = [
   "./assets/images/headshots/james-rowlinson.png",
   "./assets/images/headshots/joe-barnett.png",
   "./assets/images/headshots/johnny-griffiths.png",
-  "./assets/images/headshots/justin-colver.jpeg",
+  "./assets/images/headshots/justin-colver.png",
   "./assets/images/headshots/luka-syplywczak.png",
   "./assets/images/headshots/matt-neely.png",
   "./assets/images/headshots/nick-gubbins.png",

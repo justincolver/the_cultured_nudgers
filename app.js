@@ -112,7 +112,7 @@ function headshotForPlayer(player) {
     "james-rowlinson": "assets/images/headshots/james-rowlinson.png",
     "joe-barnett": "assets/images/headshots/joe-barnett.png",
     "johnny-griffiths": "assets/images/headshots/johnny-griffiths.png",
-    "justin-colver": "assets/images/headshots/justin-colver.jpeg",
+    "justin-colver": "assets/images/headshots/justin-colver.png",
     "luka-syplywczak": "assets/images/headshots/luka-syplywczak.png",
     "matt-neely": "assets/images/headshots/matt-neely.png",
     "nick-gubbins": "assets/images/headshots/nick-gubbins.png",
