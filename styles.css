@@ -246,16 +246,6 @@ svg {
   box-shadow: var(--shadow);
 }
 
-.home-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.home-stats .mini-stat:first-child {
-  grid-column: 1 / -1;
-}
-
 .home-loading {
   min-height: 170px;
 }
@@ -274,6 +264,111 @@ svg {
 
 .loading-card p {
   color: var(--muted);
+}
+
+.defending-card {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid rgba(248, 242, 223, .14);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.defending-card.crocombe {
+  background: linear-gradient(145deg, rgba(16, 17, 145, .9), rgba(8, 37, 27, .82));
+}
+
+.defending-card.foster {
+  background: linear-gradient(145deg, rgba(181, 0, 19, .92), rgba(8, 37, 27, .82));
+}
+
+.defending-card.neutral {
+  background: var(--card);
+}
+
+.defending-card span {
+  color: var(--gold-soft);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.defending-card strong {
+  color: var(--cream);
+  font-size: 27px;
+  line-height: 1;
+}
+
+.defending-card small {
+  color: rgba(248, 242, 223, .78);
+  font-size: 13px;
+}
+
+.tour-wins-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 15px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .035), transparent),
+    var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.tour-wins-card > span {
+  color: var(--gold-soft);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.tour-wins-score {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px 10px 46px minmax(0, 1fr);
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid rgba(248, 242, 223, .72);
+  border-radius: 16px;
+}
+
+.tour-wins-score strong,
+.tour-wins-score b {
+  min-height: 45px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  line-height: 1.05;
+}
+
+.tour-wins-score strong {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.tour-wins-score strong:first-child {
+  background: #171198;
+}
+
+.tour-wins-score strong:last-child {
+  background: #c90017;
+}
+
+.tour-wins-score b {
+  background: #f5cf31;
+  color: #050805;
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.tour-wins-score i {
+  background: #efe9d6;
 }
 
 .mini-stat {

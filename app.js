@@ -500,6 +500,77 @@ async function loadStatsOverview() {
   }
 }
 
+async function loadDefendingChampions() {
+  const latestCompleted = tours.find((tour) => tour.status === "Completed");
+  if (!latestCompleted || state.defendingChampions || state.defendingChampionsLoading) return;
+
+  state.defendingChampionsLoading = true;
+  render();
+
+  try {
+    const rows = await supabaseFetch(
+      `results_with_players?select=*&year=eq.${latestCompleted.year}&order=day.asc&order=match_number.asc`
+    );
+    const totals = teamPointsForRows(rows);
+    const winner = totals.crocs >= totals.foz ? "Crocombe" : "Foster";
+    state.defendingChampions = {
+      team: `Team ${winner}`,
+      side: winner === "Crocombe" ? "crocombe" : "foster",
+      tour: latestCompleted.shortTitle,
+      score: `${formatTeamPoints(totals.crocs)} - ${formatTeamPoints(totals.foz)}`,
+    };
+  } catch (error) {
+    console.warn(error);
+    state.defendingChampions = {
+      team: "Team TBC",
+      side: "neutral",
+      tour: "Latest tour",
+      score: "",
+    };
+  } finally {
+    state.defendingChampionsLoading = false;
+    render();
+  }
+}
+
+async function loadTeamTourWins() {
+  const completedTours = tours.filter((tour) => tour.status === "Completed" && tour.year);
+  if (!completedTours.length || state.teamTourWins || state.teamTourWinsLoading) return;
+
+  state.teamTourWinsLoading = true;
+  render();
+
+  try {
+    const years = completedTours.map((tour) => tour.year).join(",");
+    const rows = await supabaseFetch(`results_with_players?select=year,result&year=in.(${years})`);
+    const rowsByYear = rows.reduce((grouped, row) => {
+      if (!grouped[row.year]) grouped[row.year] = [];
+      grouped[row.year].push(row);
+      return grouped;
+    }, {});
+
+    state.teamTourWins = completedTours.reduce(
+      (wins, tour) => {
+        const totals = teamPointsForRows(rowsByYear[tour.year] || []);
+        if (totals.crocs > totals.foz) wins.crocombe += 1;
+        if (totals.foz > totals.crocs) wins.foster += 1;
+        if (totals.crocs === totals.foz && (totals.crocs || totals.foz)) {
+          wins.crocombe += 0.5;
+          wins.foster += 0.5;
+        }
+        return wins;
+      },
+      { crocombe: 0, foster: 0 }
+    );
+  } catch (error) {
+    console.warn(error);
+    state.teamTourWins = { crocombe: 0, foster: 0 };
+  } finally {
+    state.teamTourWinsLoading = false;
+    render();
+  }
+}
+
 async function loadSupabaseData() {
   try {
     const [tourRows, playerRows, courseRows] = await Promise.all([
@@ -555,6 +626,8 @@ async function loadSupabaseData() {
     isSupabaseConnected = true;
     hasLoadedSupabase = true;
     render();
+    loadDefendingChampions();
+    loadTeamTourWins();
     if (state.statSubTab === "Overview") loadStatsOverview();
     if (state.statSubTab === "Head-to-Head") loadHeadToHeadMatches();
     if (state.statSubTab === "Individual") loadIndividualMatches();
@@ -565,6 +638,12 @@ async function loadSupabaseData() {
     if (state.detailTour && ["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) {
       const tour = tours.find((item) => item.id === state.detailTour);
       loadTourProfiles(tour?.supabaseId);
+    }
+    if (state.tab === "this-tour" && state.detailSubTab === "Results") {
+      loadTourResults(tours[0]?.year);
+    }
+    if (state.tab === "this-tour" && ["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) {
+      loadTourProfiles(tours[0]?.supabaseId);
     }
   } catch (error) {
     console.warn(error);
@@ -603,6 +682,10 @@ let state = {
   statsOverviewLoading: false,
   statsOverviewError: "",
   statsActiveOnly: true,
+  defendingChampions: null,
+  defendingChampionsLoading: false,
+  teamTourWins: null,
+  teamTourWinsLoading: false,
   tourResultsByYear: {},
   tourResultsLoadingYear: null,
   tourResultsError: "",
@@ -756,11 +839,21 @@ function Home() {
       <div class="count-labels"><span>Days</span><span>Hrs</span><span>Mins</span><span>Secs</span></div>
       <p>⌖ ${next.location}<br>${next.startDate ? `Starts ${new Date(`${next.startDate}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : next.dates}</p>
     </section>
-    <div class="home-stats">
-      ${StatCard("Current Champion", "Tom Davies", "Scottish 2024", "🏆")}
-      ${StatCard("Funniest Stat", "13.4", "balls per tour admitted to", "⚪")}
-      ${StatCard("Lost Ball Leader", "Gaz Elcock", "27 all-time", "🌾")}
-    </div>
+    <section class="defending-card ${state.defendingChampions?.side || "neutral"}">
+      <span>Defending Champions</span>
+      <strong>${escapeHtml(state.defendingChampions?.team || "Loading...")}</strong>
+      <small>${escapeHtml(state.defendingChampions?.tour || "")}${state.defendingChampions?.score ? ` · ${escapeHtml(state.defendingChampions.score)}` : ""}</small>
+    </section>
+    <section class="tour-wins-card">
+      <span>All-Time Tour Score</span>
+      <div class="tour-wins-score">
+        <strong>Team<br>Crocombe</strong>
+        <b>${formatTeamPoints(state.teamTourWins?.crocombe || 0)}</b>
+        <i></i>
+        <b>${formatTeamPoints(state.teamTourWins?.foster || 0)}</b>
+        <strong>Team<br>Foster</strong>
+      </div>
+    </section>
   `;
 }
 
@@ -809,6 +902,16 @@ function TourOverview() {
       ${tours.map((tourItem) => `<img src="${tourItem.image}" alt="${tourItem.shortTitle} course highlight" />`).join("")}
     </div>
   `;
+}
+
+function ThisTourOverview() {
+  const actions = [
+    ["Itinerary", "calendar"], ["Tee Times", "flag"], ["Pairings", "user"],
+    ["Rules", "badge"], ["Fines System", "trophy"], ["Travel Info", "plane"],
+    ["Contacts", "phone"], ["WhatsApp", "phone"], ["Packing List", "suitcase"],
+  ];
+
+  return `<div class="action-grid this-tour-overview">${actions.map(([label, iconName]) => ActionTile(label, iconName)).join("")}</div>`;
 }
 
 function resultScoreForTeam(result, team, score) {
@@ -1085,9 +1188,9 @@ function TourTeams(tour) {
   `;
 }
 
-function TourDetail() {
-  const foundTour = tours.find((item) => item.id === state.detailTour);
-  if (!foundTour && !hasLoadedSupabase) {
+function TourDetail({ forcedTour = null, thisTourMode = false } = {}) {
+  const foundTour = forcedTour || tours.find((item) => item.id === state.detailTour);
+  if ((!foundTour || thisTourMode) && !hasLoadedSupabase) {
     return `
       ${Header("", true)}
       ${Card(`
@@ -1110,7 +1213,7 @@ function TourDetail() {
     <nav class="subnav">
       ${detailTabs.map((x) => `<button class="${x === state.detailSubTab ? "active" : ""}" data-action="detail-subtab" data-tab="${x}">${x}</button>`).join("")}
     </nav>
-    ${state.detailSubTab === "Overview" ? TourOverview() : ""}
+    ${state.detailSubTab === "Overview" ? (thisTourMode ? ThisTourOverview() : TourOverview()) : ""}
     ${state.detailSubTab === "Results" ? TourResults(tour) : ""}
     ${state.detailSubTab === "Teams" ? TourTeams(tour) : ""}
     ${state.detailSubTab === "Profiles" ? TourProfiles(tour) : ""}
@@ -1120,23 +1223,7 @@ function TourDetail() {
 }
 
 function ThisTour() {
-  const actions = [
-    ["Itinerary", "calendar"], ["Tee Times", "flag"], ["Pairings", "user"],
-    ["Rules", "badge"], ["Fines System", "trophy"], ["Travel Info", "plane"],
-    ["Contacts", "phone"], ["WhatsApp", "phone"], ["Packing List", "suitcase"],
-  ];
-  return `
-    ${Header("This Tour")}
-    ${HeroCard(tours[0])}
-    <div class="action-grid">${actions.map(([label, iconName]) => ActionTile(label, iconName)).join("")}</div>
-    ${Card(`
-      <span class="eyebrow">Next Up</span>
-      <div class="next-up">
-        <div><strong>Day 1${tours[0]?.startDate ? ` - ${new Date(`${tours[0].startDate}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}</strong><p>${currentTourCourses[0]?.course_name || "Course TBC"}<br>10:30 Tee Time</p></div>
-        <img src="${tours[0].image}" alt="Oceânico Victoria course" />
-      </div>
-    `)}
-  `;
+  return TourDetail({ forcedTour: tours[0], thisTourMode: true });
 }
 
 function escapeHtml(value = "") {
@@ -1704,6 +1791,7 @@ function restoreRoute() {
   state.detailTour = params.has("tour") ? params.get("tour") : requestedTab ? null : saved.detailTour || state.detailTour;
   state.detailSubTab = params.get("detail") || saved.detailSubTab || state.detailSubTab;
   if (state.detailSubTab === "Gallery") state.detailSubTab = "Teams";
+  if (requestedTab === "this-tour" && !params.has("detail")) state.detailSubTab = "Overview";
   state.statSubTab = params.get("stat") || saved.statSubTab || state.statSubTab;
   state.playerIndex = Number(params.get("player") || saved.playerIndex || state.playerIndex);
   state.selectedPlayerAId = Number(params.get("pa") || saved.selectedPlayerAId || state.selectedPlayerAId) || null;
@@ -1735,9 +1823,10 @@ function render() {
     stats: Stats,
     profiles: Profiles,
   };
+  const screenContent = state.tab === "this-tour" ? ThisTour() : state.detailTour ? TourDetail() : screens[state.tab]();
   app.innerHTML = `
     <div class="phone-shell">
-      <div class="content">${state.detailTour ? TourDetail() : screens[state.tab]()}</div>
+      <div class="content">${screenContent}</div>
       ${BottomNav()}
     </div>
   `;
@@ -1753,13 +1842,21 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.tab = target.dataset.tab;
     state.detailTour = null;
+    if (state.tab === "this-tour") state.detailSubTab = "Overview";
     state.openHeadToHeadPicker = null;
     state.openIndividualPicker = false;
   }
   if (action === "tour-detail") {
     state.restoredScrollTop = 0;
-    state.detailTour = target.dataset.tour;
-    state.detailSubTab = "Overview";
+    const tour = tours.find((item) => item.id === target.dataset.tour);
+    if (tour?.status === "Upcoming") {
+      state.tab = "this-tour";
+      state.detailTour = null;
+      state.detailSubTab = "Overview";
+    } else {
+      state.detailTour = target.dataset.tour;
+      state.detailSubTab = "Overview";
+    }
   }
   if (action === "back") {
     state.restoredScrollTop = 0;
@@ -1769,7 +1866,7 @@ app.addEventListener("click", (event) => {
   if (action === "detail-subtab") {
     state.restoredScrollTop = 0;
     state.detailSubTab = target.dataset.tab;
-    const tour = tours.find((item) => item.id === state.detailTour);
+    const tour = state.tab === "this-tour" ? tours[0] : tours.find((item) => item.id === state.detailTour);
     if (state.detailSubTab === "Results") loadTourResults(tour?.year);
     if (["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) loadTourProfiles(tour?.supabaseId);
   }
