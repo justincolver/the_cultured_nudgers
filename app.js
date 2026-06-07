@@ -571,6 +571,36 @@ async function loadTeamTourWins() {
   }
 }
 
+async function loadTouristData() {
+  if (state.touristDataLoaded || state.touristDataLoading) return;
+
+  state.touristDataLoading = true;
+  state.touristDataError = "";
+  render();
+
+  try {
+    const [profileRows, handicapRows, resultRows] = await Promise.all([
+      supabaseFetch("player_tour_profiles?select=*&order=tour_id.desc&order=player_id.asc"),
+      supabaseFetch("player_handicaps?select=*&order=tour_id.desc&order=player_id.asc"),
+      supabaseFetch("results_with_players?select=*&order=year.desc&order=day.asc&order=match_number.asc"),
+    ]);
+
+    state.touristProfileRows = Array.isArray(profileRows) ? profileRows : [];
+    state.touristHandicapRows = Array.isArray(handicapRows) ? handicapRows : [];
+    state.touristResultsRows = Array.isArray(resultRows) ? resultRows : [];
+    state.touristDataLoaded = true;
+  } catch (error) {
+    console.warn(error);
+    state.touristProfileRows = [];
+    state.touristHandicapRows = [];
+    state.touristResultsRows = [];
+    state.touristDataError = "Could not load tourist profiles.";
+  } finally {
+    state.touristDataLoading = false;
+    render();
+  }
+}
+
 async function loadSupabaseData() {
   try {
     const [tourRows, playerRows, courseRows] = await Promise.all([
@@ -628,6 +658,7 @@ async function loadSupabaseData() {
     render();
     loadDefendingChampions();
     loadTeamTourWins();
+    loadTouristData();
     if (state.statSubTab === "Overview") loadStatsOverview();
     if (state.statSubTab === "Head-to-Head") loadHeadToHeadMatches();
     if (state.statSubTab === "Individual") loadIndividualMatches();
@@ -657,7 +688,7 @@ const navItems = [
   ["tours", "Tours", "badge"],
   ["this-tour", "This Tour", "calendar"],
   ["stats", "Stats", "chart"],
-  ["profiles", "Tourists", "user"],
+  ["more", "More", "more"],
 ];
 
 let state = {
@@ -686,6 +717,13 @@ let state = {
   defendingChampionsLoading: false,
   teamTourWins: null,
   teamTourWinsLoading: false,
+  touristProfileRows: [],
+  touristHandicapRows: [],
+  touristResultsRows: [],
+  touristDataLoaded: false,
+  touristDataLoading: false,
+  touristDataError: "",
+  touristProfileOpen: false,
   tourResultsByYear: {},
   tourResultsLoadingYear: null,
   tourResultsError: "",
@@ -693,6 +731,7 @@ let state = {
   tourProfilesLoadingTourId: null,
   tourProfilesError: "",
   expandedTourProfiles: {},
+  moreMenuOpen: false,
   restoredScrollTop: 0,
 };
 
@@ -709,6 +748,7 @@ function icon(name) {
     bell: '<path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
     back: '<path d="m15 18-6-6 6-6"/>',
     share: '<path d="M16 6h3v14H5V6h3"/><path d="M12 3v11M8 7l4-4 4 4"/>',
+    more: '<circle cx="12" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
     trophy: '<path d="M8 5h8v4a4 4 0 0 1-8 0V5Z"/><path d="M8 7H5a3 3 0 0 0 3 4M16 7h3a3 3 0 0 1-3 4M12 13v5M9 21h6"/>',
     ball: '<circle cx="12" cy="12" r="8"/><path d="M9 9h.01M13 8h.01M15 12h.01M10 14h.01"/>',
     flag: '<path d="M6 21V4"/><path d="M6 4h11l-2 4 2 4H6"/>',
@@ -731,11 +771,19 @@ function Logo() {
 }
 
 function Header(title = "", detail = false) {
+  const leftControl =
+    detail === "locked"
+      ? `<span class="icon-spacer" aria-hidden="true"></span>`
+      : detail
+        ? `<button class="icon-btn" data-action="back" aria-label="Back">${icon("back")}</button>`
+        : `<span class="icon-spacer" aria-hidden="true"></span>`;
+  const rightControl = detail ? `<button class="icon-btn" aria-label="Share">${icon("share")}</button>` : `<span class="icon-spacer" aria-hidden="true"></span>`;
+
   return `
     <header class="app-header">
-      ${detail === "locked" ? `<span class="icon-spacer" aria-hidden="true"></span>` : `<button class="icon-btn" data-action="${detail ? "back" : "menu"}" aria-label="${detail ? "Back" : "Menu"}">${icon(detail ? "back" : "menu")}</button>`}
+      ${leftControl}
       <h1>${title}</h1>
-      <button class="icon-btn" aria-label="${detail ? "Share" : "Notifications"}">${icon(detail ? "share" : "bell")}</button>
+      ${rightControl}
     </header>
   `;
 }
@@ -785,27 +833,29 @@ function PlayerCard(player) {
   return `
     <article class="player-card card">
       <div class="player-top">
-        <div class="avatar large">${player.avatar}</div>
+        <div class="player-photo-wrap ${player.isActive === false ? "inactive" : ""}">
+          ${Avatar({ player_name: player.name }, "large")}
+          ${player.isActive === false ? `<em>Inactive</em>` : ""}
+        </div>
         <div>
           <h2>${player.name}</h2>
-          <p>"${player.nick}"</p>
+          <p>${player.nick === "[PLACEHOLDER]" ? player.nick : `"${player.nick}"`}</p>
           <span class="role-pill">${player.role}</span>
         </div>
         <div class="handicap"><span>Handicap</span>${player.handicap}</div>
       </div>
       <div class="player-stats">
-        <span><b>${player.tours}</b>Tours</span>
-        <span><b>${player.wins}</b>Wins</span>
-        <span><b>${player.top5}</b>Top 5s</span>
-        <span><b>${player.spoons}</b>Wooden Spoons</span>
+        <span><b>${player.tours}</b>${Number(player.tours) === 1 ? "Tour" : "Tours"}</span>
+        <span><b>${player.tourWins}</b>Tour Wins</span>
+        <span><b>${player.individualWins}</b>Individual Wins</span>
       </div>
       <div class="profile-section">
         <h3>About ${player.name.split(" ")[0]}</h3>
-        <p>${player.about}</p>
+        ${formatProfileBody(player.about)}
       </div>
       <div class="two-col">
-        <div><h3>Strengths</h3>${player.strengths.map((x) => `<p>${x}</p>`).join("")}</div>
-        <div><h3>Weaknesses</h3>${player.weaknesses.map((x) => `<p>${x}</p>`).join("")}</div>
+        <div><h3>Strengths</h3>${player.strengths.map((x) => `<p>${escapeHtml(x)}</p>`).join("")}</div>
+        <div><h3>Weaknesses</h3>${player.weaknesses.map((x) => `<p>${escapeHtml(x)}</p>`).join("")}</div>
       </div>
     </article>
   `;
@@ -1697,19 +1747,167 @@ function Stats() {
   `;
 }
 
-function Profiles() {
+function latestByTourId(rows = []) {
+  return [...rows].sort((a, b) => Number(b.tour_id || 0) - Number(a.tour_id || 0))[0];
+}
+
+function tourWinnerByYear(rows = []) {
+  const grouped = rows.reduce((byYear, row) => {
+    if (!byYear[row.year]) byYear[row.year] = [];
+    byYear[row.year].push(row);
+    return byYear;
+  }, {});
+
+  return Object.entries(grouped).reduce((winners, [year, yearRows]) => {
+    const totals = teamPointsForRows(yearRows);
+    if (totals.crocs > totals.foz) winners[year] = "Crocs";
+    if (totals.foz > totals.crocs) winners[year] = "Foz";
+    if (totals.crocs === totals.foz && (totals.crocs || totals.foz)) winners[year] = "Half";
+    return winners;
+  }, {});
+}
+
+function playerTourYears(playerName, profileRows = []) {
+  const profileYears = profileRows
+    .map((row) => tours.find((tour) => Number(tour.supabaseId) === Number(row.tour_id))?.year)
+    .filter(Boolean);
+  const resultYears = state.touristResultsRows
+    .filter((row) => splitTeamNames(row.crocs_team).includes(playerName) || splitTeamNames(row.foz_team).includes(playerName))
+    .map((row) => row.year)
+    .filter(Boolean);
+
+  return [...new Set([...profileYears, ...resultYears])];
+}
+
+function playerTourWins(playerName, profileRows = []) {
+  const winners = tourWinnerByYear(state.touristResultsRows);
+  const profileByYear = profileRows.reduce((byYear, row) => {
+    const year = tours.find((tour) => Number(tour.supabaseId) === Number(row.tour_id))?.year;
+    if (year && !byYear[year]) byYear[year] = row;
+    return byYear;
+  }, {});
+
+  return playerTourYears(playerName, profileRows).reduce((wins, year) => {
+    const winner = winners[year];
+    const row = profileByYear[year];
+    const teamName =
+      row?.team_name ||
+      (state.touristResultsRows.find((match) => Number(match.year) === Number(year) && splitTeamNames(match.crocs_team).includes(playerName)) ? "Crocs" : "") ||
+      (state.touristResultsRows.find((match) => Number(match.year) === Number(year) && splitTeamNames(match.foz_team).includes(playerName)) ? "Foz" : "");
+
+    if (winner === "Half") return wins + 0.5;
+    if (winner && teamName === winner) return wins + 1;
+    return wins;
+  }, 0);
+}
+
+function buildTouristPlayers() {
+  if (!allPlayers.length) {
+    return players.map((player) => ({
+      ...player,
+      isActive: true,
+      tourWins: player.wins ?? "[PLACEHOLDER]",
+      individualWins: player.wins ?? "[PLACEHOLDER]",
+      about: player.about || "[PLACEHOLDER]",
+      strengths: player.strengths?.length ? player.strengths : ["[PLACEHOLDER]"],
+      weaknesses: player.weaknesses?.length ? player.weaknesses : ["[PLACEHOLDER]"],
+    }));
+  }
+
+  const overview = buildOverviewStats(state.touristResultsRows, false);
+  const recordsByName = overview.records.reduce((records, record) => {
+    records[record.playerName] = record;
+    return records;
+  }, {});
+
+  return [...allPlayers]
+    .sort((a, b) => {
+      if (a.is_active !== b.is_active) return a.is_active === false ? 1 : -1;
+      return a.player_name.localeCompare(b.player_name);
+    })
+    .map((player) => {
+      const profileRows = state.touristProfileRows.filter((row) => Number(row.player_id) === Number(player.id));
+      const handicapRows = state.touristHandicapRows.filter((row) => Number(row.player_id) === Number(player.id));
+      const latestProfile = latestByTourId(profileRows);
+      const latestHandicap = latestByTourId(handicapRows);
+      const record = recordsByName[player.player_name] || emptyPlayerRecord(player.player_name);
+
+      return {
+        id: player.id,
+        name: player.player_name,
+        nick: player.player_nickname || "[PLACEHOLDER]",
+        isActive: player.is_active !== false,
+        handicap: latestHandicap?.handicap ?? "[PLACEHOLDER]",
+        role: latestProfile?.tour_role || "[PLACEHOLDER]",
+        tours: playerTourYears(player.player_name, profileRows).length || "[PLACEHOLDER]",
+        tourWins: formatTeamPoints(playerTourWins(player.player_name, profileRows)),
+        individualWins: record.wins || 0,
+        about: latestProfile?.profile_body || "[PLACEHOLDER]",
+        strengths: ["[PLACEHOLDER]"],
+        weaknesses: ["[PLACEHOLDER]"],
+      };
+    });
+}
+
+function TouristRoster(playersList, selectedIndex, showActiveSelection = false) {
   return `
-    ${Header("Tourists")}
-    <div class="profile-switch">
-      ${players.map((player, index) => `<button class="${index === state.playerIndex ? "active" : ""}" data-action="player" data-index="${index}">${player.name.split(" ")[0]}</button>`).join("")}
+    <div class="tourist-roster" aria-label="Tourist selector">
+      ${playersList.map((player, index) => `
+        <button class="tourist-chip ${showActiveSelection && index === selectedIndex ? "active" : ""} ${player.isActive === false ? "inactive" : ""}" data-action="player" data-index="${index}">
+          <span class="tourist-photo">
+            ${Avatar({ player_name: player.name }, "tourist-avatar")}
+            ${player.isActive === false ? `<em>Inactive</em>` : ""}
+          </span>
+          <span class="tourist-name">${escapeHtml(player.name.split(" ")[0])}</span>
+        </button>
+      `).join("")}
     </div>
-    ${PlayerCard(players[state.playerIndex])}
+  `;
+}
+
+function TouristProfilePage(player) {
+  return `
+    <button class="tourist-back" data-action="tourist-back" aria-label="Back to Tourists">${icon("back")}</button>
+    ${PlayerCard(player)}
     ${Card(`
       <h3>Career Highlights</h3>
-      <p>🏆 Portugal 2022 - Low Round (68)</p>
-      <p>🏆 Ireland 2022 - Beat the Captain</p>
-      <p>🏆 Scotland 2023 - 2nd Place</p>
+      <p>[PLACEHOLDER]</p>
     `)}
+  `;
+}
+
+function Profiles() {
+  const touristPlayers = buildTouristPlayers();
+  const selectedIndex = Math.min(state.playerIndex, Math.max(touristPlayers.length - 1, 0));
+
+  if (state.touristDataLoading) {
+    return `
+      ${Header("Tourists")}
+      ${Card(`<p class="empty-state">Loading tourist profiles...</p>`)}
+    `;
+  }
+
+  if (state.touristDataError) {
+    return `
+      ${Header("Tourists")}
+      ${Card(`<p class="empty-state">${escapeHtml(state.touristDataError)}</p>`)}
+    `;
+  }
+
+  return `
+    ${Header("Tourists")}
+    ${
+      state.touristProfileOpen
+        ? TouristProfilePage(touristPlayers[selectedIndex])
+        : TouristRoster(touristPlayers, selectedIndex)
+    }
+  `;
+}
+
+function Media() {
+  return `
+    ${Header("Pictures & Media")}
+    ${Card(`<p class="empty-state">Pictures & Media coming soon.</p>`)}
   `;
 }
 
@@ -1717,11 +1915,19 @@ function BottomNav() {
   return `
     <nav class="bottom-nav">
       ${navItems.map(([id, label, iconName]) => `
-        <button class="${state.tab === id ? "active" : ""}" data-action="tab" data-tab="${id}">
+        <button class="${id === "more" ? (["profiles", "media"].includes(state.tab) || state.moreMenuOpen ? "active" : "") : state.tab === id ? "active" : ""}" data-action="${id === "more" ? "toggle-more" : "tab"}" data-tab="${id}">
           ${icon(iconName)}
           <span>${label}</span>
         </button>
       `).join("")}
+      ${
+        state.moreMenuOpen
+          ? `<div class="more-menu">
+              <button data-action="more-option" data-tab="media">Pictures & Media</button>
+              <button data-action="more-option" data-tab="profiles">Tourists</button>
+            </div>`
+          : ""
+      }
     </nav>
   `;
 }
@@ -1822,7 +2028,9 @@ function render() {
     "this-tour": ThisTour,
     stats: Stats,
     profiles: Profiles,
+    media: Media,
   };
+  if (!screens[state.tab]) state.tab = "home";
   const screenContent = state.tab === "this-tour" ? ThisTour() : state.detailTour ? TourDetail() : screens[state.tab]();
   app.innerHTML = `
     <div class="phone-shell">
@@ -1843,6 +2051,20 @@ app.addEventListener("click", (event) => {
     state.tab = target.dataset.tab;
     state.detailTour = null;
     if (state.tab === "this-tour") state.detailSubTab = "Overview";
+    if (state.tab !== "profiles") state.touristProfileOpen = false;
+    state.openHeadToHeadPicker = null;
+    state.openIndividualPicker = false;
+    state.moreMenuOpen = false;
+  }
+  if (action === "toggle-more") {
+    state.moreMenuOpen = !state.moreMenuOpen;
+  }
+  if (action === "more-option") {
+    state.restoredScrollTop = 0;
+    state.tab = target.dataset.tab;
+    state.detailTour = null;
+    state.touristProfileOpen = false;
+    state.moreMenuOpen = false;
     state.openHeadToHeadPicker = null;
     state.openIndividualPicker = false;
   }
@@ -1880,7 +2102,15 @@ app.addEventListener("click", (event) => {
   if (action === "toggle-active-nudgers") {
     state.statsActiveOnly = target.checked;
   }
-  if (action === "player") state.playerIndex = Number(target.dataset.index);
+  if (action === "player") {
+    state.restoredScrollTop = 0;
+    state.playerIndex = Number(target.dataset.index);
+    if (state.tab === "profiles") state.touristProfileOpen = true;
+  }
+  if (action === "tourist-back") {
+    state.restoredScrollTop = 0;
+    state.touristProfileOpen = false;
+  }
   if (action === "toggle-h2h-picker") {
     state.openHeadToHeadPicker = state.openHeadToHeadPicker === target.dataset.slot ? null : target.dataset.slot;
   }
