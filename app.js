@@ -733,7 +733,7 @@ function Logo() {
 function Header(title = "", detail = false) {
   return `
     <header class="app-header">
-      <button class="icon-btn" data-action="${detail ? "back" : "menu"}" aria-label="${detail ? "Back" : "Menu"}">${icon(detail ? "back" : "menu")}</button>
+      ${detail === "locked" ? `<span class="icon-spacer" aria-hidden="true"></span>` : `<button class="icon-btn" data-action="${detail ? "back" : "menu"}" aria-label="${detail ? "Back" : "Menu"}">${icon(detail ? "back" : "menu")}</button>`}
       <h1>${title}</h1>
       <button class="icon-btn" aria-label="${detail ? "Share" : "Notifications"}">${icon(detail ? "share" : "bell")}</button>
     </header>
@@ -1206,7 +1206,7 @@ function TourDetail({ forcedTour = null, thisTourMode = false } = {}) {
   const tour = foundTour || tours[0];
   const detailTabs = ["Overview", "Results", "Teams", "Profiles", "Roles", "Awards", "Stats"];
   return `
-    ${Header("", true)}
+    ${Header("", thisTourMode ? "locked" : true)}
     <section class="detail-hero" style="background-image: linear-gradient(180deg, rgba(2,10,7,.05), rgba(2,10,7,.88)), url('${tour.image}')">
       <div><h2>${tour.title}</h2><p>${tour.dates}</p></div>
     </section>
