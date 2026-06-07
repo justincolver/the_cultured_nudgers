@@ -1271,20 +1271,24 @@ function TourDetail({ forcedTour = null, thisTourMode = false } = {}) {
 
   const tour = foundTour || tours[0];
   const detailTabs = ["Overview", "Results", "Teams", "Profiles", "Roles", "Awards", "Stats"];
-  return `
-    ${Header("", thisTourMode ? "locked" : true)}
-    <section class="detail-hero" style="background-image: linear-gradient(180deg, rgba(2,10,7,.05), rgba(2,10,7,.88)), url('${tour.image}')">
-      <div><h2>${tour.title}</h2><p>${tour.dates}</p></div>
-    </section>
-    <nav class="subnav">
-      ${detailTabs.map((x) => `<button class="${x === state.detailSubTab ? "active" : ""}" data-action="detail-subtab" data-tab="${x}">${x}</button>`).join("")}
-    </nav>
+  const detailBody = `
     ${state.detailSubTab === "Overview" ? (thisTourMode ? ThisTourOverview() : TourOverview()) : ""}
     ${state.detailSubTab === "Results" ? TourResults(tour) : ""}
     ${state.detailSubTab === "Teams" ? TourTeams(tour) : ""}
     ${state.detailSubTab === "Profiles" ? TourProfiles(tour) : ""}
     ${state.detailSubTab === "Roles" ? TourRoles(tour) : ""}
     ${!["Overview", "Results", "Teams", "Profiles", "Roles"].includes(state.detailSubTab) ? Card(`<p class="empty-state">${state.detailSubTab} coming soon.</p>`) : ""}
+  `;
+
+  return `
+    ${Header("", thisTourMode ? "locked" : true)}
+    <section class="detail-hero" style="background-image: linear-gradient(180deg, rgba(2,10,7,.05), rgba(2,10,7,.88)), url('${tour.image}')">
+      <div><h2>${tour.title}</h2><p>${tour.dates}</p></div>
+    </section>
+    <nav class="subnav detail-tabs">
+      ${detailTabs.map((x) => `<button class="${x === state.detailSubTab ? "active" : ""}" data-action="detail-subtab" data-tab="${x}">${x}</button>`).join("")}
+    </nav>
+    <div class="detail-body">${detailBody}</div>
   `;
 }
 
@@ -2171,7 +2175,8 @@ function jumpToTourProfile(profileId) {
   if (!target) return;
 
   const content = document.querySelector(".content");
-  const targetTop = target.getBoundingClientRect().top + (content?.scrollTop || 0) - 92;
+  const fixedHeaderHeight = 192;
+  const targetTop = target.getBoundingClientRect().top + (content?.scrollTop || 0) - fixedHeaderHeight;
   content?.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
 }
 
