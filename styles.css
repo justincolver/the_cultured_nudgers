@@ -98,6 +98,11 @@ button {
   letter-spacing: 0;
 }
 
+.app-header-blank {
+  min-height: calc(12px + env(safe-area-inset-top));
+  margin-bottom: 0;
+}
+
 .icon-btn {
   display: grid;
   width: 42px;
@@ -1361,6 +1366,52 @@ svg {
   margin-top: 16px;
 }
 
+.tour-profile-reader {
+  position: relative;
+  margin-top: 14px;
+}
+
+.tour-profile-list.with-rail {
+  padding-right: 58px;
+}
+
+.tour-profile-rail {
+  position: fixed;
+  top: min(285px, calc(34dvh + env(safe-area-inset-top)));
+  right: 10px;
+  bottom: calc(78px + env(safe-area-inset-bottom));
+  z-index: 8;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  width: 48px;
+  overflow-y: auto;
+  padding: 6px 4px;
+  background: rgba(3, 18, 13, .58);
+  border: 1px solid rgba(248, 242, 223, .12);
+  border-radius: 999px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .28);
+  touch-action: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tour-rail-face {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  border-radius: 50%;
+}
+
+.tour-rail-avatar {
+  width: 34px;
+  height: 34px;
+  border-color: rgba(248, 242, 223, .22);
+  font-size: 10px;
+}
+
 .tour-profile-card {
   padding: 16px;
   background:
@@ -1669,9 +1720,11 @@ svg {
 }
 
 .tourist-back {
+  position: relative;
+  z-index: 6;
   display: grid;
-  width: 38px;
-  height: 34px;
+  width: 42px;
+  height: 38px;
   place-items: center;
   margin: -48px 0 14px;
   padding: 0;

@@ -771,6 +771,10 @@ function Logo() {
 }
 
 function Header(title = "", detail = false) {
+  if (!title && !detail) {
+    return `<header class="app-header app-header-blank" aria-hidden="true"></header>`;
+  }
+
   const leftControl =
     detail === "locked"
       ? `<span class="icon-spacer" aria-hidden="true"></span>`
@@ -1107,9 +1111,8 @@ function TourProfileCard(row) {
   const player = getPlayerById(row.player_id);
   const playerName = player?.player_name || `Player ${row.player_id}`;
   const title = row.tour_role || row.profile_title || "Tour Profile";
-  const isExpanded = Boolean(state.expandedTourProfiles[row.id]);
   return `
-    <article class="tour-profile-card">
+    <article class="tour-profile-card" id="tour-profile-${row.id}">
       <div class="tour-profile-head">
         ${Avatar(player, "tour-profile-avatar")}
         <div>
@@ -1117,16 +1120,24 @@ function TourProfileCard(row) {
           <span>${escapeHtml(title)}</span>
         </div>
       </div>
-      ${
-        isExpanded
-          ? `<button class="read-more-btn top" data-action="toggle-tour-profile" data-profile-id="${row.id}">Show less</button>`
-          : ""
-      }
-      <div class="profile-body-preview ${isExpanded ? "expanded" : ""}">${formatProfileBody(row.profile_body)}</div>
-      <button class="read-more-btn" data-action="toggle-tour-profile" data-profile-id="${row.id}">
-        ${isExpanded ? "Show less" : "Read more"}
-      </button>
+      <div class="profile-body-preview expanded">${formatProfileBody(row.profile_body)}</div>
     </article>
+  `;
+}
+
+function TourProfileRail(profileRows) {
+  return `
+    <div class="tour-profile-rail" aria-label="Tour profile quick jump">
+      ${profileRows.map((row) => {
+        const player = getPlayerById(row.player_id);
+        const playerName = player?.player_name || `Player ${row.player_id}`;
+        return `
+          <button class="tour-rail-face" data-action="jump-tour-profile" data-profile-id="${row.id}" aria-label="${escapeHtml(playerName)}">
+            ${Avatar(player, "tour-rail-avatar")}
+          </button>
+        `;
+      }).join("")}
+    </div>
   `;
 }
 
@@ -1157,7 +1168,12 @@ function TourProfiles(tour) {
     return Card(`<p class="empty-state">No tour profiles found for this tour.</p>`);
   }
 
-  return `<div class="tour-profile-list">${profileRows.map(TourProfileCard).join("")}</div>`;
+  return `
+    <div class="tour-profile-reader">
+      <div class="tour-profile-list with-rail">${profileRows.map(TourProfileCard).join("")}</div>
+      ${TourProfileRail(profileRows)}
+    </div>
+  `;
 }
 
 function TourRoles(tour) {
@@ -2136,11 +2152,55 @@ app.addEventListener("click", (event) => {
     loadHeadToHeadMatches();
   }
   if (action === "toggle-tour-profile") {
+    const content = document.querySelector(".content");
+    state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
     const profileId = target.dataset.profileId;
     state.expandedTourProfiles[profileId] = !state.expandedTourProfiles[profileId];
   }
+  if (action === "jump-tour-profile") {
+    jumpToTourProfile(target.dataset.profileId);
+    persistRoute();
+    return;
+  }
   render();
   persistRoute();
+});
+
+let activeRailPointerId = null;
+
+function jumpToTourProfile(profileId) {
+  const target = document.getElementById(`tour-profile-${profileId}`);
+  if (!target) return;
+
+  const content = document.querySelector(".content");
+  const targetTop = target.getBoundingClientRect().top + (content?.scrollTop || 0) - 92;
+  content?.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+}
+
+function jumpToRailFaceFromPoint(clientX, clientY) {
+  const face = document.elementFromPoint(clientX, clientY)?.closest?.("[data-action='jump-tour-profile']");
+  if (!face) return;
+  jumpToTourProfile(face.dataset.profileId);
+}
+
+app.addEventListener("pointerdown", (event) => {
+  const face = event.target.closest("[data-action='jump-tour-profile']");
+  if (!face) return;
+  activeRailPointerId = event.pointerId;
+  jumpToTourProfile(face.dataset.profileId);
+});
+
+app.addEventListener("pointermove", (event) => {
+  if (activeRailPointerId !== event.pointerId) return;
+  jumpToRailFaceFromPoint(event.clientX, event.clientY);
+});
+
+app.addEventListener("pointerup", (event) => {
+  if (activeRailPointerId === event.pointerId) activeRailPointerId = null;
+});
+
+app.addEventListener("pointercancel", (event) => {
+  if (activeRailPointerId === event.pointerId) activeRailPointerId = null;
 });
 
 document.addEventListener("scroll", () => persistRoute(), true);
