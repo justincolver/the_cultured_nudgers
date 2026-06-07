@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#041711"/>
+  <circle cx="256" cy="256" r="176" fill="#08281d" stroke="#d0ad67" stroke-width="14"/>
+  <circle cx="256" cy="256" r="132" fill="none" stroke="#f5f0dc" stroke-width="5" stroke-dasharray="10 16"/>
+  <path d="M160 333h192c-23 34-54 52-96 52s-73-18-96-52Z" fill="#d0ad67"/>
+  <path d="M214 313c-30-13-45-39-45-77 0-51 36-94 87-94s87 43 87 94c0 38-15 64-45 77-13-22-27-35-42-35s-29 13-42 35Z" fill="#f5f0dc"/>
+  <path d="M256 126v158" stroke="#041711" stroke-width="14" stroke-linecap="round"/>
+  <path d="M256 126c33 2 58 14 77 35-23 1-45 7-67 18-4-20-7-36-10-53Z" fill="#d0ad67"/>
+  <text x="256" y="116" text-anchor="middle" font-family="Georgia, serif" font-size="40" font-weight="700" fill="#f5f0dc">TCN</text>
+</svg>
