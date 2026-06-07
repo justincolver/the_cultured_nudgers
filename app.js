@@ -9,7 +9,7 @@ let tours = [
     status: "Upcoming",
     dates: "May 15 - May 19, 2025",
     location: "Vilamoura, Portugal",
-    image: "assets/images/portugal.png",
+    image: "assets/images/tours/2019-vilamoura.jpg",
   },
   {
     id: "scotland-2024",
@@ -18,7 +18,7 @@ let tours = [
     status: "Completed",
     dates: "May 9 - May 13, 2024",
     location: "Fife, Scotland",
-    image: "assets/images/scotland.png",
+    image: "assets/images/tours/2022-carnoustie.jpg",
   },
   {
     id: "mallorca-2023",
@@ -27,7 +27,7 @@ let tours = [
     status: "Completed",
     dates: "May 4 - May 8, 2023",
     location: "Capdepera, Mallorca",
-    image: "assets/images/mallorca.png",
+    image: "assets/images/tours/2023-woodhall-spa.jpg",
   },
   {
     id: "ireland-2022",
@@ -36,7 +36,7 @@ let tours = [
     status: "Completed",
     dates: "May 12 - May 16, 2022",
     location: "Doonbeg, Ireland",
-    image: "assets/images/ireland.png",
+    image: "assets/images/tours/2021-st-mellion-burnham-berrow.webp",
   },
 ];
 
@@ -45,7 +45,9 @@ let countdownTimer = null;
 let currentTourCourses = [];
 let allCourses = [];
 let isSupabaseConnected = false;
+let hasLoadedSupabase = false;
 let allPlayers = [];
+const preloadedImages = new Set();
 
 let players = [
   {
@@ -194,12 +196,30 @@ function imageForTour(row, index) {
     2026: "assets/images/tours/2026-aberdovey.webp",
   };
   const fallbackImages = [
-    "assets/images/portugal.png",
-    "assets/images/scotland.png",
-    "assets/images/mallorca.png",
-    "assets/images/ireland.png",
+    "assets/images/tours/2026-aberdovey.webp",
+    "assets/images/tours/2025-bruges-damme.jpg",
+    "assets/images/tours/2024-hardelot-le-touquet.jpg",
+    "assets/images/tours/2023-woodhall-spa.jpg",
   ];
   return imagesByYear[row.year] || fallbackImages[index % fallbackImages.length];
+}
+
+function preloadImages(urls = []) {
+  urls
+    .filter(Boolean)
+    .filter((url) => !preloadedImages.has(url))
+    .forEach((url) => {
+      preloadedImages.add(url);
+
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "image";
+      link.href = url;
+      document.head.appendChild(link);
+
+      const image = new Image();
+      image.src = url;
+    });
 }
 
 function mapSupabaseTour(row, index) {
@@ -490,6 +510,7 @@ async function loadSupabaseData() {
 
     if (Array.isArray(tourRows) && tourRows.length) {
       const mappedTours = tourRows.map(mapSupabaseTour);
+      preloadImages(mappedTours.map((tour) => tour.image));
       const upcoming = mappedTours
         .filter((tour) => tour.startDate && new Date(`${tour.startDate}T00:00:00`) >= new Date())
         .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
@@ -532,6 +553,7 @@ async function loadSupabaseData() {
     }
 
     isSupabaseConnected = true;
+    hasLoadedSupabase = true;
     render();
     if (state.statSubTab === "Overview") loadStatsOverview();
     if (state.statSubTab === "Head-to-Head") loadHeadToHeadMatches();
@@ -546,6 +568,8 @@ async function loadSupabaseData() {
     }
   } catch (error) {
     console.warn(error);
+    hasLoadedSupabase = true;
+    render();
   }
 }
 
@@ -705,6 +729,20 @@ function PlayerCard(player) {
 }
 
 function Home() {
+  if (!hasLoadedSupabase) {
+    return `
+      ${Header()}
+      <section class="home-logo">${Logo()}<p>Welcome back, Nudger 👋</p></section>
+      ${Card(`
+        <span class="eyebrow">Next Tour</span>
+        <div class="loading-card">
+          <strong>Loading tour room...</strong>
+          <p>Fetching the latest Nudgers intel.</p>
+        </div>
+      `, "home-loading")}
+    `;
+  }
+
   const next = tours[0];
   return `
     ${Header()}

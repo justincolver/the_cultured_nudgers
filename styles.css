@@ -169,8 +169,10 @@ svg {
 .next-tour {
   min-height: 238px;
   padding: 20px;
+  border: 0;
   border-radius: 18px;
   color: var(--cream);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, .3);
   text-shadow: 0 2px 18px rgba(0, 0, 0, .72);
 }
 
@@ -240,6 +242,26 @@ svg {
   grid-column: 1 / -1;
 }
 
+.home-loading {
+  min-height: 170px;
+}
+
+.loading-card {
+  display: grid;
+  min-height: 118px;
+  align-content: center;
+  gap: 8px;
+}
+
+.loading-card strong {
+  color: var(--cream);
+  font-size: 22px;
+}
+
+.loading-card p {
+  color: var(--muted);
+}
+
 .mini-stat {
   display: flex;
   justify-content: space-between;
@@ -278,6 +300,7 @@ svg {
   display: grid;
   min-height: 135px;
   padding: 20px;
+  border: 0;
   text-align: left;
   border-radius: 16px;
 }
