@@ -131,6 +131,10 @@ function headshotForPlayer(player) {
   return headshots[slugifyName(player.player_name)] || "";
 }
 
+function playerNickname(player = {}) {
+  return String(player.player_nickname || "").trim();
+}
+
 function Avatar(player, className = "") {
   const headshot = headshotForPlayer(player);
   const initials = getInitials(player?.player_name || className || "N");
@@ -779,7 +783,7 @@ function Header(title = "", detail = false) {
       : detail
         ? `<button class="icon-btn" data-action="back" aria-label="Back">${icon("back")}</button>`
         : `<span class="icon-spacer" aria-hidden="true"></span>`;
-  const rightControl = detail ? `<button class="icon-btn" aria-label="Share">${icon("share")}</button>` : `<span class="icon-spacer" aria-hidden="true"></span>`;
+  const rightControl = detail && detail !== "locked" ? `<button class="icon-btn" aria-label="Share">${icon("share")}</button>` : `<span class="icon-spacer" aria-hidden="true"></span>`;
 
   return `
     <header class="app-header">
@@ -824,6 +828,53 @@ function pageHeroImage(offset = 0) {
   return tours[offset]?.image || tours[0]?.image || "assets/images/tours/2026-aberdovey.webp";
 }
 
+function yearFromTour(tour) {
+  return tour?.year || String(tour?.title || tour?.shortTitle || "").match(/\b(20\d{2})\b/)?.[1] || "";
+}
+
+function tourDetailHeroTitle(tour) {
+  const year = yearFromTour(tour);
+  return [tourDisplayName(tour), year].filter(Boolean).join(" ");
+}
+
+function compactDateRange(dateRange = "") {
+  return String(dateRange)
+    .replace(/\s+-\s+/g, "-")
+    .replace(/,\s*\d{4}\b$/, "");
+}
+
+function tourCourseCount(tour) {
+  const year = yearFromTour(tour);
+  const coursesForTour = allCourses.filter((course) => Number(course.year) === Number(year));
+  return new Set(coursesForTour.map((course) => course.course_name || course.id).filter(Boolean)).size || coursesForTour.length || currentTourCourses.length || 0;
+}
+
+function tourPlayerCount(tour) {
+  const rows =
+    state.tourProfilesByTourId[tour.supabaseId] ||
+    state.touristProfileRows.filter((row) => Number(row.tour_id) === Number(tour.supabaseId));
+  return new Set(
+    rows
+      .filter((row) => row.on_tour === true || row.on_tour === "true")
+      .map((row) => row.player_id)
+      .filter(Boolean)
+  ).size;
+}
+
+function DetailHeroMeta(tour) {
+  const playerCount = tourPlayerCount(tour);
+  const courseCount = tourCourseCount(tour);
+  return `
+    <div class="detail-hero-meta">
+      <span>${icon("user")}<b>${playerCount}</b> ${playerCount === 1 ? "Player" : "Players"}</span>
+      <i></i>
+      <span>${icon("flag")}<b>${courseCount}</b> ${courseCount === 1 ? "Course" : "Courses"}</span>
+      <i></i>
+      <span>${icon("calendar")}${escapeHtml(compactDateRange(tour.dates))}</span>
+    </div>
+  `;
+}
+
 function TourCard(tour) {
   return `
     <button class="tour-card" data-action="tour-detail" data-tour="${tour.id}" style="background-image: linear-gradient(90deg, rgba(2,14,9,.68), rgba(2,14,9,.1)), url('${tour.image}')">
@@ -850,6 +901,7 @@ function ActionTile(label, iconName) {
 }
 
 function PlayerCard(player) {
+  const nickname = String(player.nick || "").trim();
   return `
     <article class="player-card card">
       <div class="player-top">
@@ -859,7 +911,7 @@ function PlayerCard(player) {
         </div>
         <div>
           <h2>${player.name}</h2>
-          <p>${player.nick === "[PLACEHOLDER]" ? player.nick : `"${player.nick}"`}</p>
+          ${nickname ? `<p>"${escapeHtml(nickname)}"</p>` : ""}
           <span class="role-pill">${player.role}</span>
         </div>
         <div class="handicap"><span>Handicap</span>${player.handicap}</div>
@@ -1330,7 +1382,7 @@ function TourDetail({ forcedTour = null, thisTourMode = false } = {}) {
   const foundTour = forcedTour || tours.find((item) => item.id === state.detailTour);
   if ((!foundTour || thisTourMode) && !hasLoadedSupabase) {
     return `
-      ${Header("", true)}
+      ${Header("", "locked")}
       ${Card(`
         <span class="eyebrow">Tour</span>
         <div class="loading-card">
@@ -1353,9 +1405,12 @@ function TourDetail({ forcedTour = null, thisTourMode = false } = {}) {
   `;
 
   return `
-    ${Header("", thisTourMode ? "locked" : true)}
+    ${Header("", "locked")}
     <section class="detail-hero" style="background-image: linear-gradient(180deg, rgba(2,10,7,.05), rgba(2,10,7,.88)), url('${tour.image}')">
-      <div><h2>${tour.title}</h2><p>${tour.dates}</p></div>
+      <div class="detail-hero-content">
+        <h2>${escapeHtml(tourDetailHeroTitle(tour))}</h2>
+        ${DetailHeroMeta(tour)}
+      </div>
     </section>
     <nav class="subnav detail-tabs">
       ${detailTabs.map((x) => `<button class="${x === state.detailSubTab ? "active" : ""}" data-action="detail-subtab" data-tab="${x}">${x}</button>`).join("")}
@@ -1929,7 +1984,7 @@ function buildTouristPlayers() {
       return {
         id: player.id,
         name: player.player_name,
-        nick: player.player_nickname || "[PLACEHOLDER]",
+        nick: playerNickname(player),
         isActive: player.is_active !== false,
         handicap: latestHandicap?.handicap ?? "[PLACEHOLDER]",
         role: latestProfile?.tour_role || "[PLACEHOLDER]",
@@ -2150,7 +2205,10 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.tab = target.dataset.tab;
     state.detailTour = null;
-    if (state.tab === "this-tour") state.detailSubTab = "Overview";
+    if (state.tab === "this-tour") {
+      state.detailSubTab = "Overview";
+      loadTourProfiles(tours[0]?.supabaseId);
+    }
     if (state.tab !== "profiles") state.touristProfileOpen = false;
     state.openHeadToHeadPicker = null;
     state.openIndividualPicker = false;
@@ -2184,6 +2242,7 @@ app.addEventListener("click", (event) => {
     } else {
       state.detailTour = target.dataset.tour;
       state.detailSubTab = "Overview";
+      loadTourProfiles(tours.find((item) => item.id === state.detailTour)?.supabaseId);
     }
   }
   if (action === "home-view-tour") {
@@ -2191,6 +2250,7 @@ app.addEventListener("click", (event) => {
     state.tab = "this-tour";
     state.detailTour = null;
     state.detailSubTab = "Overview";
+    loadTourProfiles(tours[0]?.supabaseId);
   }
   if (action === "back") {
     state.restoredScrollTop = 0;

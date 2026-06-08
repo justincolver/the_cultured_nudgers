@@ -12,15 +12,12 @@
   --nav-bg: #052016;
   --tabbar-bottom-pad: max(10px, calc(env(safe-area-inset-bottom) - 18px));
   --tabbar-top-pad: 8px;
-  --detail-hero-height: 132px;
-  --detail-hero-title-pad: 56px;
-  --detail-hero-bottom-pad: 13px;
+  --hero-height: 132px;
+  --hero-title-pad: 54px;
+  --hero-bottom-pad: 14px;
   --detail-tabs-gap: 8px;
   --detail-tabs-height: 44px;
   --detail-content-gap: 20px;
-  --page-hero-height: 132px;
-  --page-hero-title-pad: 54px;
-  --page-hero-bottom-pad: 14px;
   --page-content-gap: 14px;
   --page-tabs-height: 46px;
   --stats-body-tabs-offset: calc(var(--page-tabs-height) + 2px);
@@ -197,11 +194,11 @@ svg {
   left: 0;
   z-index: 20;
   display: flex;
-  height: calc(var(--page-hero-height) + env(safe-area-inset-top));
+  height: calc(var(--hero-height) + env(safe-area-inset-top));
   min-height: 0;
   align-items: end;
   margin: 0;
-  padding: calc(var(--page-hero-title-pad) + env(safe-area-inset-top)) 28px var(--page-hero-bottom-pad);
+  padding: calc(var(--hero-title-pad) + env(safe-area-inset-top)) 28px var(--hero-bottom-pad);
   background:
     radial-gradient(circle at 18% 0%, rgba(20, 95, 64, .34), transparent 38%),
     linear-gradient(180deg, #083523 0%, #052117 62%, #03120d 100%);
@@ -225,7 +222,7 @@ svg {
 }
 
 .page-body {
-  padding-top: calc(var(--page-hero-height) + env(safe-area-inset-top));
+  padding-top: calc(var(--hero-height) + env(safe-area-inset-top));
 }
 
 .page-body .tour-list {
@@ -282,8 +279,7 @@ svg {
 }
 
 .next-tour h2,
-.hero-card h2,
-.detail-hero h2 {
+.hero-card h2 {
   margin: 12px 0 10px;
   font-size: 26px;
   line-height: 1.05;
@@ -624,24 +620,74 @@ svg {
   z-index: 20;
   display: flex;
   align-items: end;
-  height: calc(var(--detail-hero-height) + env(safe-area-inset-top));
+  height: calc(var(--hero-height) + env(safe-area-inset-top));
   min-height: 0;
   margin: 0;
-  padding: calc(var(--detail-hero-title-pad) + env(safe-area-inset-top)) 28px var(--detail-hero-bottom-pad);
+  padding: calc(var(--hero-title-pad) + env(safe-area-inset-top)) 28px var(--hero-bottom-pad);
   border-right: 0;
   border-left: 0;
   border-radius: 0;
 }
 
 .detail-hero h2 {
-  margin-bottom: 5px;
-  font-size: 25px;
+  max-width: min(100%, 640px);
+  margin: 0 0 7px;
+  font-size: 26px;
+  line-height: 1.05;
 }
 
-.detail-hero p,
 .hero-card p {
   margin: 0;
   color: var(--cream);
+}
+
+.detail-hero-content {
+  min-width: 0;
+}
+
+.detail-hero-meta {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  color: rgba(248, 242, 223, .86);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.1;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .72);
+}
+
+.detail-hero-meta span {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.detail-hero-meta svg {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  color: var(--gold);
+  fill: none;
+  stroke-width: 2.2;
+}
+
+.detail-hero-meta b {
+  color: var(--gold);
+  font-weight: 850;
+}
+
+.detail-hero-meta i {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 8px;
+  margin: 0 4px;
+  background: rgba(248, 242, 223, .24);
 }
 
 .subnav {
@@ -661,7 +707,7 @@ svg {
 
 .detail-tabs {
   position: fixed;
-  top: calc(var(--detail-hero-height) + var(--detail-tabs-gap) + env(safe-area-inset-top));
+  top: calc(var(--hero-height) + var(--detail-tabs-gap) + env(safe-area-inset-top));
   right: 16px;
   left: 16px;
   z-index: 21;
@@ -670,7 +716,7 @@ svg {
 }
 
 .detail-body {
-  padding-top: calc(var(--detail-hero-height) + var(--detail-tabs-gap) + var(--detail-tabs-height) + var(--detail-content-gap) - 36px);
+  padding-top: calc(var(--hero-height) + env(safe-area-inset-top) + var(--detail-tabs-gap) + var(--detail-tabs-height) + var(--detail-content-gap));
 }
 
 .subnav.top {
@@ -679,7 +725,7 @@ svg {
 
 .stats-sticky {
   position: fixed;
-  top: calc(var(--page-hero-height) + env(safe-area-inset-top));
+  top: calc(var(--hero-height) + env(safe-area-inset-top));
   right: 0;
   left: 0;
   z-index: 25;
@@ -704,7 +750,7 @@ svg {
 }
 
 .stats-body {
-  padding-top: calc(var(--page-hero-height) + env(safe-area-inset-top) + var(--stats-body-tabs-offset));
+  padding-top: calc(var(--hero-height) + env(safe-area-inset-top) + var(--stats-body-tabs-offset));
 }
 
 .stats-body > :first-child {
@@ -1591,7 +1637,7 @@ svg {
 
 .tour-profile-rail {
   position: fixed;
-  top: calc(var(--detail-hero-height) + var(--detail-tabs-gap) + var(--detail-tabs-height) + var(--detail-content-gap) + env(safe-area-inset-top));
+  top: calc(var(--hero-height) + var(--detail-tabs-gap) + var(--detail-tabs-height) + var(--detail-content-gap) + env(safe-area-inset-top));
   right: 10px;
   bottom: calc(78px + env(safe-area-inset-bottom));
   z-index: 8;
@@ -2236,12 +2282,9 @@ svg {
   :root {
     --tabbar-bottom-pad: max(2px, calc(env(safe-area-inset-bottom) - 32px));
     --tabbar-top-pad: 6px;
-    --detail-hero-height: 92px;
-    --detail-hero-title-pad: 32px;
-    --detail-hero-bottom-pad: 9px;
-    --page-hero-height: var(--detail-hero-height);
-    --page-hero-title-pad: var(--detail-hero-title-pad);
-    --page-hero-bottom-pad: var(--detail-hero-bottom-pad);
+    --hero-height: 92px;
+    --hero-title-pad: 32px;
+    --hero-bottom-pad: 9px;
   }
 }
 
