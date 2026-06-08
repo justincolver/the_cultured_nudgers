@@ -719,6 +719,7 @@ svg {
 
 .detail-body {
   padding-top: calc(var(--hero-height) + env(safe-area-inset-top) + var(--detail-tabs-gap) + var(--detail-tabs-height) + var(--detail-content-gap) - 30px);
+  padding-bottom: calc(92px + env(safe-area-inset-bottom));
 }
 
 .subnav.top {
