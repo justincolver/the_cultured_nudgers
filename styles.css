@@ -1008,6 +1008,16 @@ svg {
   overflow: hidden;
 }
 
+.cms-editor-card.editing .cms-toolbar {
+  position: relative;
+  top: auto;
+  z-index: 1;
+  flex: 0 0 auto;
+  margin: 0 0 16px;
+  padding: 0;
+  background: transparent;
+}
+
 .cms-edit-btn {
   min-height: 36px;
   padding: 8px 14px;
