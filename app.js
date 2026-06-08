@@ -1740,13 +1740,14 @@ function TourRoles(tour) {
   return `<div class="tour-profile-list roles-list">${roleRows.map(TourRoleCard).join("")}</div>`;
 }
 
-function TeamPlayer(row) {
+function TeamPlayer(row, teamName = "") {
   const player = getPlayerById(row.player_id);
   const playerName = player?.player_name || `Player ${row.player_id}`;
   const firstName = playerName.split(" ")[0];
+  const teamClass = teamName === "Crocs" ? "crocs" : teamName === "Foz" ? "foz" : "";
   return `
     <article class="team-player">
-      ${Avatar(player, "team-avatar")}
+      ${Avatar(player, `team-avatar ${teamClass}`.trim())}
       <strong>${escapeHtml(firstName)}</strong>
     </article>
   `;
@@ -1791,7 +1792,7 @@ function TourTeams(tour) {
             </div>
           </div>
           <div class="team-grid">
-            ${playersForTeam.map(TeamPlayer).join("")}
+            ${playersForTeam.map((playerRow) => TeamPlayer(playerRow, teamName)).join("")}
           </div>
         </section>
       `).join("")}
