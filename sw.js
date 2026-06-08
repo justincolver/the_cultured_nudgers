@@ -1,5 +1,6 @@
-const CACHE_NAME = "cultured-nudgers-v112";
+const CACHE_NAME = "cultured-nudgers-v113";
 const ASSETS = [
+  "./index.html",
   "./login.html",
   "./styles.css",
   "./app.js",
@@ -68,7 +69,14 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.startsWith("/api/")) return;
   if (event.request.mode === "navigate") {
-    event.respondWith(fetch(event.request));
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) return response;
+          return caches.match("./index.html").then((cached) => cached || fetch("/"));
+        })
+        .catch(() => caches.match("./index.html").then((cached) => cached || fetch("/")))
+    );
     return;
   }
 

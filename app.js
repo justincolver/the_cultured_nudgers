@@ -9,7 +9,7 @@ let tours = [
     status: "Upcoming",
     dates: "May 15 - May 19, 2025",
     location: "Vilamoura, Portugal",
-    image: "assets/images/tours/2019-vilamoura.jpg",
+    image: "/assets/images/tours/2019-vilamoura.jpg",
   },
   {
     id: "scotland-2024",
@@ -18,7 +18,7 @@ let tours = [
     status: "Completed",
     dates: "May 9 - May 13, 2024",
     location: "Fife, Scotland",
-    image: "assets/images/tours/2022-carnoustie.jpg",
+    image: "/assets/images/tours/2022-carnoustie.jpg",
   },
   {
     id: "mallorca-2023",
@@ -27,7 +27,7 @@ let tours = [
     status: "Completed",
     dates: "May 4 - May 8, 2023",
     location: "Capdepera, Mallorca",
-    image: "assets/images/tours/2023-woodhall-spa.jpg",
+    image: "/assets/images/tours/2023-woodhall-spa.jpg",
   },
   {
     id: "ireland-2022",
@@ -36,7 +36,7 @@ let tours = [
     status: "Completed",
     dates: "May 12 - May 16, 2022",
     location: "Doonbeg, Ireland",
-    image: "assets/images/tours/2021-st-mellion-burnham-berrow.webp",
+    image: "/assets/images/tours/2021-st-mellion-burnham-berrow.webp",
   },
 ];
 
@@ -100,36 +100,36 @@ function slugifyName(name = "") {
 function headshotForPlayer(player) {
   if (!player?.player_name) return "";
   const headshots = {
-    "bander-pyke": "assets/images/headshots/bander-pyke.png",
-    "brian-crotty": "assets/images/headshots/brian-crotty.png",
-    "eamonn-sheehy": "assets/images/headshots/eamonn-sheehy.png",
-    "edmund-northcott": "assets/images/headshots/edmund-northcott.png",
-    "george-holman": "assets/images/headshots/george-holman.png",
-    "greg-smith": "assets/images/headshots/greg-smith.png",
-    "harry-rowlinson": "assets/images/headshots/harry-rowlinson.png",
-    "henry-rudkin": "assets/images/headshots/henry-rudkin.png",
-    "james-barrie": "assets/images/headshots/james-barrie.png",
-    "james-rowlinson": "assets/images/headshots/james-rowlinson.png",
-    "joe-barnett": "assets/images/headshots/joe-barnett.png",
-    "johnny-griffiths": "assets/images/headshots/johnny-griffiths.png",
-    "justin-colver": "assets/images/headshots/justin-colver.png",
-    "luka-syplywczak": "assets/images/headshots/luka-syplywczak.png",
-    "matt-neely": "assets/images/headshots/matt-neely.png",
-    "nick-gubbins": "assets/images/headshots/nick-gubbins.png",
-    "patch-foster": "assets/images/headshots/patch-foster.png",
-    "peter-crocombe": "assets/images/headshots/peter-crocombe.png",
-    "raff-mckenzie": "assets/images/headshots/raff-mckenzie.png",
-    "raff-mckensie": "assets/images/headshots/raff-mckenzie.png",
-    "rob-moore": "assets/images/headshots/rob-moore.png",
-    "sam-foster": "assets/images/headshots/sam-foster.png",
-    "simon-collings": "assets/images/headshots/simon-collings.png",
-    "simon-hicks": "assets/images/headshots/simon-hicks.png",
-    "tom-smith": "assets/images/headshots/tom-smith.png",
-    "tom-tynan": "assets/images/headshots/tom-tynan.png",
-    "tom-wigglesworth": "assets/images/headshots/tom-wigglesworth.png",
-    "will-gubbins": "assets/images/headshots/will-gubbins.png",
-    "will-major": "assets/images/headshots/will-major.png",
-    "will-macpherson": "assets/images/headshots/will-macpherson.png",
+    "bander-pyke": "/assets/images/headshots/bander-pyke.png",
+    "brian-crotty": "/assets/images/headshots/brian-crotty.png",
+    "eamonn-sheehy": "/assets/images/headshots/eamonn-sheehy.png",
+    "edmund-northcott": "/assets/images/headshots/edmund-northcott.png",
+    "george-holman": "/assets/images/headshots/george-holman.png",
+    "greg-smith": "/assets/images/headshots/greg-smith.png",
+    "harry-rowlinson": "/assets/images/headshots/harry-rowlinson.png",
+    "henry-rudkin": "/assets/images/headshots/henry-rudkin.png",
+    "james-barrie": "/assets/images/headshots/james-barrie.png",
+    "james-rowlinson": "/assets/images/headshots/james-rowlinson.png",
+    "joe-barnett": "/assets/images/headshots/joe-barnett.png",
+    "johnny-griffiths": "/assets/images/headshots/johnny-griffiths.png",
+    "justin-colver": "/assets/images/headshots/justin-colver.png",
+    "luka-syplywczak": "/assets/images/headshots/luka-syplywczak.png",
+    "matt-neely": "/assets/images/headshots/matt-neely.png",
+    "nick-gubbins": "/assets/images/headshots/nick-gubbins.png",
+    "patch-foster": "/assets/images/headshots/patch-foster.png",
+    "peter-crocombe": "/assets/images/headshots/peter-crocombe.png",
+    "raff-mckenzie": "/assets/images/headshots/raff-mckenzie.png",
+    "raff-mckensie": "/assets/images/headshots/raff-mckenzie.png",
+    "rob-moore": "/assets/images/headshots/rob-moore.png",
+    "sam-foster": "/assets/images/headshots/sam-foster.png",
+    "simon-collings": "/assets/images/headshots/simon-collings.png",
+    "simon-hicks": "/assets/images/headshots/simon-hicks.png",
+    "tom-smith": "/assets/images/headshots/tom-smith.png",
+    "tom-tynan": "/assets/images/headshots/tom-tynan.png",
+    "tom-wigglesworth": "/assets/images/headshots/tom-wigglesworth.png",
+    "will-gubbins": "/assets/images/headshots/will-gubbins.png",
+    "will-major": "/assets/images/headshots/will-major.png",
+    "will-macpherson": "/assets/images/headshots/will-macpherson.png",
   };
   return headshots[slugifyName(player.player_name)] || "";
 }
@@ -191,22 +191,22 @@ function getTourStatus(row) {
 
 function imageForTour(row, index) {
   const imagesByYear = {
-    2016: "assets/images/tours/2016-morocco.jpg",
-    2017: "assets/images/tours/2017-monte-rei.jpg",
-    2018: "assets/images/tours/2018-laranjal.webp",
-    2019: "assets/images/tours/2019-vilamoura.jpg",
-    2021: "assets/images/tours/2021-st-mellion-burnham-berrow.webp",
-    2022: "assets/images/tours/2022-carnoustie.jpg",
-    2023: "assets/images/tours/2023-woodhall-spa.jpg",
-    2024: "assets/images/tours/2024-hardelot-le-touquet.jpg",
-    2025: "assets/images/tours/2025-bruges-damme.jpg",
-    2026: "assets/images/tours/2026-aberdovey.webp",
+    2016: "/assets/images/tours/2016-morocco.jpg",
+    2017: "/assets/images/tours/2017-monte-rei.jpg",
+    2018: "/assets/images/tours/2018-laranjal.webp",
+    2019: "/assets/images/tours/2019-vilamoura.jpg",
+    2021: "/assets/images/tours/2021-st-mellion-burnham-berrow.webp",
+    2022: "/assets/images/tours/2022-carnoustie.jpg",
+    2023: "/assets/images/tours/2023-woodhall-spa.jpg",
+    2024: "/assets/images/tours/2024-hardelot-le-touquet.jpg",
+    2025: "/assets/images/tours/2025-bruges-damme.jpg",
+    2026: "/assets/images/tours/2026-aberdovey.webp",
   };
   const fallbackImages = [
-    "assets/images/tours/2026-aberdovey.webp",
-    "assets/images/tours/2025-bruges-damme.jpg",
-    "assets/images/tours/2024-hardelot-le-touquet.jpg",
-    "assets/images/tours/2023-woodhall-spa.jpg",
+    "/assets/images/tours/2026-aberdovey.webp",
+    "/assets/images/tours/2025-bruges-damme.jpg",
+    "/assets/images/tours/2024-hardelot-le-touquet.jpg",
+    "/assets/images/tours/2023-woodhall-spa.jpg",
   ];
   return imagesByYear[row.year] || fallbackImages[index % fallbackImages.length];
 }
@@ -257,6 +257,22 @@ async function supabaseFetch(path) {
 
   if (!response.ok) throw new Error(`Supabase request failed: ${response.status}`);
   return response.json();
+}
+
+async function supabaseWrite(path, { method = "POST", body } = {}) {
+  const response = await fetch(`${SUPABASE_REST_URL}/${path}`, {
+    method,
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) throw new Error(`Supabase write failed: ${response.status}`);
+  return response.status === 204 ? null : response.json();
 }
 
 function getPlayerById(id) {
@@ -445,6 +461,93 @@ async function loadTourProfiles(tourId) {
     state.tourProfilesError = "Could not load tour profiles.";
   } finally {
     state.tourProfilesLoadingTourId = null;
+    render();
+  }
+}
+
+function tourPageCacheKey(year, pageKey) {
+  return `${year}:${pageKey}`;
+}
+
+function normaliseTourPageContent(content) {
+  return Array.isArray(content)
+    ? content
+        .filter((block) => block && ["heading", "text", "bullet"].includes(block.type))
+        .map((block) => ({ type: block.type, text: String(block.text || "") }))
+    : [];
+}
+
+async function loadTourPage(year, pageKey, fallbackTitle) {
+  if (!year || !pageKey) return;
+  const cacheKey = tourPageCacheKey(year, pageKey);
+  if (state.tourPagesByKey[cacheKey] || state.tourPageLoadingKey === cacheKey) return;
+
+  state.tourPageLoadingKey = cacheKey;
+  state.tourPageError = "";
+  render();
+
+  try {
+    const rows = await supabaseFetch(
+      `tour_pages?select=*&tour_year=eq.${year}&page_key=eq.${encodeURIComponent(pageKey)}&limit=1`
+    );
+    let page = rows[0];
+    if (!page) {
+      const createdRows = await supabaseWrite("tour_pages", {
+        body: {
+          tour_year: Number(year),
+          page_key: pageKey,
+          title: fallbackTitle,
+          content: [],
+          updated_at: new Date().toISOString(),
+        },
+      });
+      page = createdRows?.[0];
+    }
+
+    state.tourPagesByKey[cacheKey] = {
+      ...page,
+      content: normaliseTourPageContent(page?.content),
+    };
+  } catch (error) {
+    console.warn(error);
+    state.tourPageError = "Could not load this tour page.";
+  } finally {
+    state.tourPageLoadingKey = null;
+    render();
+  }
+}
+
+async function saveTourPage(year, pageKey) {
+  const cacheKey = tourPageCacheKey(year, pageKey);
+  const page = state.tourPagesByKey[cacheKey];
+  if (!page?.id || state.tourPageSavingKey === cacheKey) return;
+
+  state.tourPageSavingKey = cacheKey;
+  state.tourPageError = "";
+  render();
+
+  try {
+    const savedRows = await supabaseWrite(`tour_pages?id=eq.${page.id}`, {
+      method: "PATCH",
+      body: {
+        title: page.title,
+        content: normaliseTourPageContent(page.content),
+        updated_at: new Date().toISOString(),
+      },
+    });
+    const savedPage = savedRows?.[0] || page;
+    state.tourPagesByKey[cacheKey] = {
+      ...savedPage,
+      content: normaliseTourPageContent(savedPage.content),
+    };
+    delete state.tourPageDrafts[cacheKey];
+    state.tourPageSavedKey = cacheKey;
+    state.tourPageEditingKey = null;
+  } catch (error) {
+    console.warn(error);
+    state.tourPageError = "Could not save this tour page.";
+  } finally {
+    state.tourPageSavingKey = null;
     render();
   }
 }
@@ -683,6 +786,9 @@ async function loadSupabaseData() {
     if (state.tab === "this-tour" && ["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) {
       loadTourProfiles(tours[0]?.supabaseId);
     }
+    if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel && state.thisTourOverviewPanel !== "scorecards") {
+      loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
+    }
   } catch (error) {
     console.warn(error);
     hasLoadedSupabase = true;
@@ -738,6 +844,15 @@ let state = {
   tourProfilesLoadingTourId: null,
   tourProfilesError: "",
   expandedTourProfiles: {},
+  thisTourOverviewPanel: "",
+  thisTourOverviewYear: null,
+  tourPagesByKey: {},
+  tourPageLoadingKey: null,
+  tourPageSavingKey: null,
+  tourPageSavedKey: null,
+  tourPageError: "",
+  tourPageEditingKey: null,
+  tourPageDrafts: {},
   moreMenuOpen: false,
   restoredScrollTop: 0,
 };
@@ -771,7 +886,7 @@ function icon(name) {
 
 function Logo() {
   return `
-    <img class="home-logo-image" src="assets/images/homepage-logo.png" alt="The Cultured Nudgers" />
+    <img class="home-logo-image" src="/assets/images/homepage-logo.png" alt="The Cultured Nudgers" />
   `;
 }
 
@@ -814,7 +929,7 @@ function HeroCard(tour, extra = "") {
 }
 
 function PageHero(title, subtitle = "", image = "") {
-  const heroImage = image || tours[0]?.image || "assets/images/tours/2026-aberdovey.webp";
+  const heroImage = image || tours[0]?.image || "/assets/images/tours/2026-aberdovey.webp";
   const background = `linear-gradient(180deg, rgba(2,10,7,.05), rgba(2,10,7,.88)), url('${heroImage}')`;
 
   return `
@@ -828,7 +943,7 @@ function PageHero(title, subtitle = "", image = "") {
 }
 
 function pageHeroImage(offset = 0) {
-  return tours[offset]?.image || tours[0]?.image || "assets/images/tours/2026-aberdovey.webp";
+  return tours[offset]?.image || tours[0]?.image || "/assets/images/tours/2026-aberdovey.webp";
 }
 
 function yearFromTour(tour) {
@@ -887,7 +1002,7 @@ function BillSplitterScorecard(crocombePoints = 0, fosterPoints = 0) {
           <b>${formatTeamPoints(crocombePoints)}</b>
         </div>
         <div class="tour-wins-trophy" aria-label="Bill Splitter Trophy">
-          <img src="assets/images/trophies/bill-splitter-trophy-lite.png" alt="" aria-hidden="true" />
+          <img src="/assets/images/trophies/bill-splitter-trophy-lite.png" alt="" aria-hidden="true" />
         </div>
         <div class="tour-wins-team foz">
           <strong>Team Foster</strong>
@@ -919,8 +1034,8 @@ function StatCard(label, value, detail, image) {
   `, "mini-stat");
 }
 
-function ActionTile(label, iconName) {
-  return `<button class="action-tile">${icon(iconName)}<span>${label}</span></button>`;
+function ActionTile(label, iconName, view) {
+  return `<button class="action-tile" data-action="overview-panel" data-view="${view}">${icon(iconName)}<span>${label}</span></button>`;
 }
 
 function PlayerCard(player) {
@@ -1070,14 +1185,301 @@ function TourOverview(tour) {
   `;
 }
 
-function ThisTourOverview() {
-  const actions = [
-    ["Itinerary", "calendar"], ["Tee Times", "flag"], ["Pairings", "user"],
-    ["Rules", "badge"], ["Fines System", "trophy"], ["Travel Info", "plane"],
-    ["Contacts", "phone"], ["WhatsApp", "phone"], ["Packing List", "suitcase"],
-  ];
+const aberdoveyScorecardRows = [
+  ["1", "441", "441", "420", "4", "10"],
+  ["2", "332", "332", "310", "4", "8"],
+  ["3", "173", "173", "157", "3", "17"],
+  ["4", "401", "401", "374", "4", "3"],
+  ["5", "202", "202", "193", "3", "13"],
+  ["6", "431", "402", "331", "4", "6"],
+  ["7", "518", "482", "470", "5", "2"],
+  ["8", "335", "335", "310", "4", "15"],
+  ["9", "160", "160", "156", "3", "12"],
+  ["OUT", "2993", "2928", "2721", "34", ""],
+  ["10", "440", "415", "408", "4", "5"],
+  ["11", "407", "407", "370", "4", "9"],
+  ["12", "149", "149", "131", "3", "18"],
+  ["13", "557", "530", "509", "5", "1"],
+  ["14", "401", "389", "383", "4", "11"],
+  ["15", "509", "509", "477", "5", "7"],
+  ["16", "288", "288", "281", "4", "16"],
+  ["17", "428", "428", "405", "4", "4"],
+  ["18", "443", "443", "419", "4", "14"],
+  ["IN", "3622", "3558", "3383", "37", ""],
+  ["TOTAL", "6615", "6486", "6104", "71", ""],
+];
 
-  return `<div class="action-grid this-tour-overview">${actions.map(([label, iconName]) => ActionTile(label, iconName)).join("")}</div>`;
+function AberdoveyScorecard() {
+  const headers = ["Hole", "Darwin", "Medal", "Mens", "Par", "SI"];
+  const formatScorecardCell = (cell) => (/^\d{4,}$/.test(cell) ? Number(cell).toLocaleString("en-GB") : cell);
+  return Card(`
+    <div class="scorecard-header">
+      <span class="eyebrow">Scorecards</span>
+      <h3>Aberdovey Golf Course</h3>
+    </div>
+    <div class="scorecard-table-wrap">
+      <table class="scorecard-table">
+        <thead>
+          <tr>
+            ${headers.map((header, index) => `<th class="${index === 1 ? "darwin" : index === 2 ? "medal-white" : index === 3 ? "mens-yellow" : ""}">${header}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${aberdoveyScorecardRows.map((row) => {
+            const totalRow = ["OUT", "IN", "TOTAL"].includes(row[0]);
+            return `
+              <tr class="${totalRow ? "total-row" : ""}">
+                ${row.map((cell, index) => `<td class="${index === 1 ? "darwin" : index === 2 ? "medal-white" : index === 3 ? "mens-yellow" : ""}">${escapeHtml(formatScorecardCell(cell))}</td>`).join("")}
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `, "scorecard-card");
+}
+
+const thisTourOverviewActions = [
+  ["Itinerary", "calendar", "itinerary"],
+  ["Packing List", "suitcase", "packing-list"],
+  ["Travel Info", "plane", "travel-info"],
+  ["Tee Times", "flag", "tee-times"],
+  ["Scorecards", "badge", "scorecards"],
+];
+
+function formatOverviewFeatureTitle(view) {
+  return thisTourOverviewActions.find(([, , actionView]) => actionView === view)?.[0] || "This Tour";
+}
+
+function currentTourPageYear() {
+  return Number(state.thisTourOverviewYear || tours[0]?.year);
+}
+
+function TourPageContentBlock(block) {
+  const text = escapeHtml(block.text || "");
+  if (block.type === "heading") return `<h2 data-type="heading">${text || "<br>"}</h2>`;
+  if (block.type === "bullet") return `<p class="cms-bullet-line" data-type="bullet">${text || "<br>"}</p>`;
+  return `<p data-type="text">${text || "<br>"}</p>`;
+}
+
+function TourPageReadBox(blocks) {
+  return `
+    <div class="cms-content-box">
+      ${blocks.length ? blocks.map(TourPageContentBlock).join("") : `<p class="empty-state">No content yet.</p>`}
+    </div>
+  `;
+}
+
+function TourPageEditorBox(blocks) {
+  const cacheKey = tourPageCacheKey(currentTourPageYear(), state.thisTourOverviewPanel);
+  const draft = getTourPageDraft(cacheKey, blocks);
+  return `
+    <div class="cms-toolbar" aria-label="Editor toolbar">
+      <button data-action="format-tour-page-line" data-type="heading">Heading</button>
+      <button data-action="format-tour-page-line" data-type="text">Text</button>
+      <button data-action="format-tour-page-line" data-type="bullet">Bullet</button>
+    </div>
+    <div class="cms-content-box cms-content-editor" contenteditable="plaintext-only" spellcheck="true" role="textbox" aria-multiline="true" data-placeholder="Type freely here...">${escapeHtml(draft.text)}</div>
+  `;
+}
+
+function getTourPageEditor() {
+  return document.querySelector(".cms-content-editor");
+}
+
+function blockToDraftText(block) {
+  const text = String(block.text || "").trim();
+  if (block.type === "heading") return text ? `# ${text}` : "# ";
+  if (block.type === "bullet") return text ? `- ${text}` : "- ";
+  return text;
+}
+
+function getTourPageDraft(cacheKey, blocks = []) {
+  if (!state.tourPageDrafts[cacheKey]) {
+    const safeBlocks = blocks.length ? blocks : [{ type: "text", text: "" }];
+    state.tourPageDrafts[cacheKey] = {
+      text: safeBlocks.map(blockToDraftText).join("\n"),
+    };
+  }
+  return state.tourPageDrafts[cacheKey];
+}
+
+function draftParagraphs(text = "") {
+  const paragraphs = String(text).split("\n");
+  const starts = paragraphs.reduce((lineStarts, paragraph, index) => {
+    const previousStart = lineStarts[index - 1] || 0;
+    const previousLength = index ? paragraphs[index - 1].length + 1 : 0;
+    lineStarts.push(previousStart + previousLength);
+    return lineStarts;
+  }, []);
+  return { paragraphs, starts };
+}
+
+function currentDraftParagraphIndex(text = "", selectionStart = 0) {
+  const { paragraphs, starts } = draftParagraphs(text);
+  return starts.reduce((activeIndex, start, index) => (
+    selectionStart >= start ? index : activeIndex
+  ), 0);
+}
+
+function draftToTourPageBlocks(draft) {
+  const { paragraphs } = draftParagraphs(draft.text);
+  return paragraphs
+    .map((paragraph) => {
+      const text = paragraph.trim();
+      if (text.startsWith("# ")) return { type: "heading", text: text.replace(/^#\s+/, "").trim() };
+      if (text.startsWith("- ") || text.startsWith("• ")) return { type: "bullet", text: text.replace(/^[-•]\s+/, "").trim() };
+      return { type: "text", text };
+    })
+    .filter((block) => block.text);
+}
+
+function updateTourPageDraftFromEditor() {
+  const editor = getTourPageEditor();
+  const cacheKey = tourPageCacheKey(currentTourPageYear(), state.thisTourOverviewPanel);
+  const draft = getTourPageDraft(cacheKey, normaliseTourPageContent(state.tourPagesByKey[cacheKey]?.content));
+  draft.text = editor?.innerText || "";
+  state.tourPageSavedKey = null;
+}
+
+function editorTextSelectionOffset(editor) {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !editor.contains(selection.anchorNode)) return (editor.innerText || "").length;
+  const range = selection.getRangeAt(0).cloneRange();
+  range.selectNodeContents(editor);
+  range.setEnd(selection.anchorNode, selection.anchorOffset);
+  return range.toString().length;
+}
+
+function setEditorTextSelectionOffset(editor, offset) {
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  let remaining = offset;
+  let node = walker.nextNode();
+  while (node) {
+    if (remaining <= node.textContent.length) {
+      const range = document.createRange();
+      range.setStart(node, Math.max(0, remaining));
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return;
+    }
+    remaining -= node.textContent.length;
+    node = walker.nextNode();
+  }
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  range.collapse(false);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function insertTextAtEditorSelection(editor, text) {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !editor.contains(selection.anchorNode)) {
+    editor.append(text);
+    setEditorTextSelectionOffset(editor, (editor.innerText || "").length);
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  range.deleteContents();
+  const textNode = document.createTextNode(text);
+  range.insertNode(textNode);
+  range.setStartAfter(textNode);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function applyTourPageLineFormat(type) {
+  const editor = getTourPageEditor();
+  if (!editor) return;
+  const cacheKey = tourPageCacheKey(currentTourPageYear(), state.thisTourOverviewPanel);
+  const draft = getTourPageDraft(cacheKey, normaliseTourPageContent(state.tourPagesByKey[cacheKey]?.content));
+  const selectionStart = editorTextSelectionOffset(editor);
+  const { paragraphs, starts } = draftParagraphs(editor.innerText);
+  const paragraphIndex = currentDraftParagraphIndex(editor.innerText, selectionStart);
+  const paragraphStart = starts[paragraphIndex] || 0;
+  const paragraph = paragraphs[paragraphIndex] || "";
+  const cleanText = paragraph.trim().replace(/^#\s+/, "").replace(/^[-•]\s+/, "");
+  const formattedParagraph = type === "heading" ? `# ${cleanText}` : type === "bullet" ? `- ${cleanText}` : cleanText;
+  const before = editor.innerText.slice(0, paragraphStart);
+  const after = editor.innerText.slice(paragraphStart + paragraph.length);
+  draft.text = `${before}${formattedParagraph}${after}`;
+  state.tourPageSavedKey = null;
+  editor.innerText = draft.text;
+  const prefixDelta = formattedParagraph.length - paragraph.length;
+  const nextSelectionStart = Math.max(paragraphStart, selectionStart + prefixDelta);
+  editor.focus();
+  setEditorTextSelectionOffset(editor, nextSelectionStart);
+}
+
+function continueTourPageListLine(event) {
+  const editor = event.target.closest(".cms-content-editor");
+  if (!editor || event.key !== "Enter" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
+
+  const selectionStart = editorTextSelectionOffset(editor);
+  const { paragraphs } = draftParagraphs(editor.innerText);
+  const lineIndex = currentDraftParagraphIndex(editor.innerText, selectionStart);
+  const currentLine = paragraphs[lineIndex] || "";
+  if (!currentLine.trim().startsWith("- ")) return;
+
+  event.preventDefault();
+  insertTextAtEditorSelection(editor, "\n- ");
+  updateTourPageDraftFromEditor();
+}
+
+function ThisTourOverviewFeature() {
+  const pageKey = state.thisTourOverviewPanel;
+  const year = currentTourPageYear();
+  const title = formatOverviewFeatureTitle(pageKey);
+
+  if (pageKey === "scorecards") {
+    return `
+      <section class="overview-feature-screen">
+        <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
+        <h1>${escapeHtml(title)}</h1>
+        <div class="overview-feature-body">${AberdoveyScorecard()}</div>
+      </section>
+    `;
+  }
+
+  const cacheKey = tourPageCacheKey(year, pageKey);
+  const page = state.tourPagesByKey[cacheKey];
+  const blocks = normaliseTourPageContent(page?.content);
+  const isLoading = state.tourPageLoadingKey === cacheKey;
+  const isSaving = state.tourPageSavingKey === cacheKey;
+  const saved = state.tourPageSavedKey === cacheKey;
+  const isEditing = state.tourPageEditingKey === cacheKey;
+
+  return `
+    <section class="overview-feature-screen">
+      <div class="overview-feature-topbar">
+        <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
+        ${!isLoading ? `<button class="cms-edit-btn" data-action="${isEditing ? "save-tour-page" : "edit-tour-page"}">${isSaving ? "Saving..." : isEditing ? "Save" : "Edit"}</button>` : ""}
+      </div>
+      <div class="cms-page-head">
+        <span class="eyebrow">${year}</span>
+        <h1>${escapeHtml(page?.title || title)}</h1>
+      </div>
+      <div class="overview-feature-body">
+        ${state.tourPageError ? Card(`<p class="empty-state">${escapeHtml(state.tourPageError)}</p>`) : ""}
+        ${isLoading ? Card(`<p class="empty-state">Loading ${escapeHtml(title)}...</p>`) : ""}
+        ${!isLoading ? Card(`
+          ${isEditing ? TourPageEditorBox(blocks) : TourPageReadBox(blocks)}
+          ${saved && !isSaving ? `<p class="cms-save-note">Saved.</p>` : ""}
+        `, "cms-editor-card") : ""}
+      </div>
+    </section>
+  `;
+}
+
+function ThisTourOverview() {
+  return `
+    <div class="action-grid this-tour-overview">${thisTourOverviewActions.map(([label, iconName, view]) => ActionTile(label, iconName, view)).join("")}</div>
+  `;
 }
 
 function resultScoreForTeam(result, team, score) {
@@ -1413,6 +1815,10 @@ function TourDetail({ forcedTour = null, thisTourMode = false } = {}) {
   }
 
   const tour = foundTour || tours[0];
+  if (thisTourMode && state.detailSubTab === "Overview" && state.thisTourOverviewPanel) {
+    return ThisTourOverviewFeature();
+  }
+
   const detailTabs = ["Overview", "Results", "Teams", "Profiles", "Roles", "Awards", "Stats"];
   const detailBody = `
     ${state.detailSubTab === "Overview" ? (thisTourMode ? ThisTourOverview() : TourOverview(tour)) : ""}
@@ -2121,6 +2527,8 @@ function routeState() {
     tab: state.tab,
     detailTour: state.detailTour,
     detailSubTab: state.detailSubTab,
+    thisTourOverviewPanel: state.thisTourOverviewPanel,
+    thisTourOverviewYear: state.thisTourOverviewYear,
     statSubTab: state.statSubTab,
     playerIndex: state.playerIndex,
     selectedPlayerAId: state.selectedPlayerAId,
@@ -2149,12 +2557,23 @@ function persistRoute(replace = true) {
   if (route.scrollTop) params.set("scroll", route.scrollTop);
   else params.delete("scroll");
 
-  const nextUrl = `${window.location.pathname}?${params.toString()}`;
+  let nextPath = "/";
+  if (route.tab === "this-tour" && route.detailSubTab === "Overview" && route.thisTourOverviewPanel) {
+    params.set("page", route.thisTourOverviewPanel);
+    params.set("year", route.thisTourOverviewYear || tours[0]?.year);
+    params.delete("scroll");
+  } else {
+    params.delete("page");
+    params.delete("year");
+  }
+
+  const nextUrl = `${nextPath}?${params.toString()}`;
   if (replace) window.history.replaceState(null, "", nextUrl);
 }
 
 function restoreRoute() {
   const params = new URLSearchParams(window.location.search);
+  const pathMatch = window.location.pathname.match(/^\/tour\/(\d{4})\/([a-z0-9-]+)\/?$/);
   let saved = {};
   try {
     saved = JSON.parse(localStorage.getItem("nudgers-route") || "{}");
@@ -2162,10 +2581,21 @@ function restoreRoute() {
     saved = {};
   }
 
-  const requestedTab = params.get("tab");
+  const requestedTab = pathMatch ? "this-tour" : params.get("tab");
   state.tab = requestedTab || saved.tab || state.tab;
   state.detailTour = params.has("tour") ? params.get("tour") : requestedTab ? null : saved.detailTour || state.detailTour;
   state.detailSubTab = params.get("detail") || saved.detailSubTab || state.detailSubTab;
+  if (pathMatch) {
+    state.detailSubTab = "Overview";
+    state.thisTourOverviewYear = Number(pathMatch[1]);
+    state.thisTourOverviewPanel = pathMatch[2];
+  } else if (requestedTab === "this-tour" && !params.has("page")) {
+    state.thisTourOverviewPanel = "";
+    state.thisTourOverviewYear = null;
+  } else {
+    state.thisTourOverviewPanel = params.get("page") || saved.thisTourOverviewPanel || state.thisTourOverviewPanel;
+    state.thisTourOverviewYear = Number(params.get("year") || saved.thisTourOverviewYear || state.thisTourOverviewYear) || null;
+  }
   if (state.detailSubTab === "Gallery") state.detailSubTab = "Teams";
   if (requestedTab === "this-tour" && !params.has("detail")) state.detailSubTab = "Overview";
   state.statSubTab = params.get("stat") || saved.statSubTab || state.statSubTab;
@@ -2213,6 +2643,12 @@ function render() {
   updateCountdown();
   restoreScrollPosition();
   requestAnimationFrame(updateActiveTourProfileRail);
+  if (state.tourPageEditingKey) {
+    requestAnimationFrame(() => {
+      const editor = getTourPageEditor();
+      editor?.focus();
+    });
+  }
 }
 
 app.addEventListener("click", (event) => {
@@ -2225,6 +2661,7 @@ app.addEventListener("click", (event) => {
     state.detailTour = null;
     if (state.tab === "this-tour") {
       state.detailSubTab = "Overview";
+      state.thisTourOverviewPanel = "";
       loadTourProfiles(tours[0]?.supabaseId);
     }
     if (state.tab !== "profiles") state.touristProfileOpen = false;
@@ -2270,6 +2707,7 @@ app.addEventListener("click", (event) => {
     state.tab = "this-tour";
     state.detailTour = null;
     state.detailSubTab = "Overview";
+    state.thisTourOverviewPanel = "";
     loadTourProfiles(tours[0]?.supabaseId);
   }
   if (action === "back") {
@@ -2280,10 +2718,48 @@ app.addEventListener("click", (event) => {
   if (action === "detail-subtab") {
     state.restoredScrollTop = 0;
     state.detailSubTab = target.dataset.tab;
+    state.thisTourOverviewPanel = "";
     const tour = state.tab === "this-tour" ? tours[0] : tours.find((item) => item.id === state.detailTour);
     if (state.detailSubTab === "Overview" && state.tab !== "this-tour" && tour?.status === "Completed") loadTourResults(tour?.year);
     if (state.detailSubTab === "Results") loadTourResults(tour?.year);
     if (["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) loadTourProfiles(tour?.supabaseId);
+  }
+  if (action === "overview-panel") {
+    state.restoredScrollTop = 0;
+    state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
+    state.thisTourOverviewPanel = target.dataset.view;
+    if (state.thisTourOverviewPanel !== "scorecards") {
+      loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
+    }
+  }
+  if (action === "overview-back") {
+    state.restoredScrollTop = 0;
+    state.thisTourOverviewPanel = "";
+  }
+  if (action === "edit-tour-page") {
+    const year = currentTourPageYear();
+    const pageKey = state.thisTourOverviewPanel;
+    const cacheKey = tourPageCacheKey(year, pageKey);
+    getTourPageDraft(cacheKey, normaliseTourPageContent(state.tourPagesByKey[cacheKey]?.content));
+    state.tourPageEditingKey = cacheKey;
+  }
+  if (action === "format-tour-page-line") {
+    applyTourPageLineFormat(target.dataset.type);
+    state.tourPageSavedKey = null;
+    persistRoute();
+    return;
+  }
+  if (action === "save-tour-page") {
+    const year = currentTourPageYear();
+    const pageKey = state.thisTourOverviewPanel;
+    const cacheKey = tourPageCacheKey(year, pageKey);
+    const page = state.tourPagesByKey[cacheKey];
+    if (page) {
+      updateTourPageDraftFromEditor();
+      page.content = draftToTourPageBlocks(state.tourPageDrafts[cacheKey]);
+      state.tourPageSavedKey = null;
+    }
+    saveTourPage(year, pageKey);
   }
   if (action === "stat-tab") {
     state.restoredScrollTop = 0;
@@ -2341,6 +2817,22 @@ app.addEventListener("click", (event) => {
   }
   render();
   persistRoute();
+});
+
+app.addEventListener("input", (event) => {
+  const target = event.target.closest(".cms-content-editor");
+  if (!target) return;
+  updateTourPageDraftFromEditor();
+});
+
+app.addEventListener("keydown", (event) => {
+  continueTourPageListLine(event);
+});
+
+app.addEventListener("pointerdown", (event) => {
+  if (event.target.closest("[data-action='format-tour-page-line']")) {
+    event.preventDefault();
+  }
 });
 
 function jumpToTourProfile(profileId) {

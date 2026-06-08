@@ -904,6 +904,302 @@ svg {
   text-transform: uppercase;
 }
 
+.overview-feature-screen {
+  min-height: calc(100dvh - 112px - env(safe-area-inset-bottom));
+  padding-top: max(8px, env(safe-area-inset-top));
+}
+
+.overview-feature-screen h1 {
+  margin: 0 0 16px;
+  color: var(--cream);
+  font-size: 30px;
+  line-height: 1.05;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .55);
+}
+
+.overview-feature-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  margin: 0 0 14px;
+}
+
+.overview-feature-back {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  margin-left: -8px;
+  place-items: center;
+  background: transparent;
+  color: var(--cream);
+}
+
+.overview-feature-back svg {
+  width: 28px;
+  height: 28px;
+}
+
+.cms-page-head h1 {
+  margin-bottom: 12px;
+}
+
+.cms-toolbar {
+  position: sticky;
+  top: env(safe-area-inset-top);
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 -2px 14px;
+  padding: 8px 0;
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(3, 18, 13, .9) 100%);
+}
+
+.cms-toolbar button {
+  min-height: 42px;
+  background: rgba(208, 173, 103, .14);
+  border: 1px solid rgba(208, 173, 103, .42);
+  border-radius: 10px;
+  color: var(--gold-soft);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.overview-feature-body {
+  padding-bottom: 18px;
+}
+
+.overview-feature-body .scorecard-card {
+  margin-top: 0;
+}
+
+.cms-editor-card {
+  margin-bottom: 16px;
+}
+
+.cms-edit-btn {
+  min-height: 36px;
+  padding: 8px 14px;
+  background: rgba(208, 173, 103, .14);
+  border: 1px solid rgba(208, 173, 103, .42);
+  border-radius: 999px;
+  color: var(--gold-soft);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cms-content-box {
+  min-height: 180px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.cms-content-editor {
+  min-height: 280px;
+  width: 100%;
+  outline: 2px solid rgba(208, 173, 103, .28);
+  outline-offset: 0;
+  caret-color: var(--gold-soft);
+  color: var(--cream);
+  cursor: text;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+.cms-content-editor[contenteditable="plaintext-only"] {
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.cms-content-editor:empty::before {
+  color: var(--muted);
+  content: attr(data-placeholder);
+}
+
+.cms-content-editor::selection {
+  background: rgba(208, 173, 103, .42);
+  color: var(--cream);
+}
+
+.cms-content-box h2,
+.cms-content-box p {
+  display: block;
+  min-height: 1.3em;
+  margin: 0;
+}
+
+.cms-content-box h2 {
+  color: var(--gold-soft);
+  font-size: 22px;
+  line-height: 1.12;
+  text-transform: none;
+}
+
+.cms-content-box p {
+  color: var(--cream);
+  font-size: 16px;
+  line-height: 1.42;
+}
+
+.cms-content-box h2 + h2,
+.cms-content-box h2 + p,
+.cms-content-box p + h2,
+.cms-content-box p + p {
+  margin-top: 10px;
+}
+
+.cms-bullet-line {
+  position: relative;
+  padding-left: 18px;
+}
+
+.cms-bullet-line::before {
+  position: absolute;
+  top: .58em;
+  left: 2px;
+  width: 6px;
+  height: 6px;
+  background: var(--gold);
+  border-radius: 999px;
+  content: "";
+}
+
+.cms-save-btn {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.cms-save-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.cms-save-note {
+  color: var(--gold-soft);
+  font-weight: 800;
+}
+
+.scorecard-card {
+  margin-top: 16px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.scorecard-header {
+  padding: 16px 16px 10px;
+}
+
+.scorecard-header h3 {
+  margin: 4px 0 0;
+  color: var(--cream);
+  font-size: 20px;
+  text-transform: none;
+}
+
+.scorecard-table-wrap {
+  overflow-x: hidden;
+  padding: 0 6px 12px;
+}
+
+.scorecard-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--cream);
+  font-size: 11px;
+  text-align: center;
+}
+
+.scorecard-table th,
+.scorecard-table td {
+  padding: 7px 3px;
+  background: rgba(248, 242, 223, .04);
+  border-right: 1px solid rgba(248, 242, 223, .08);
+  border-bottom: 1px solid rgba(248, 242, 223, .08);
+  white-space: nowrap;
+}
+
+.scorecard-table th:first-child,
+.scorecard-table td:first-child {
+  text-align: left;
+  font-weight: 850;
+}
+
+.scorecard-table th {
+  color: var(--gold-soft);
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.05;
+  text-transform: uppercase;
+  white-space: normal;
+}
+
+.scorecard-table th:nth-child(1),
+.scorecard-table td:nth-child(1),
+.scorecard-table th:nth-child(2),
+.scorecard-table td:nth-child(2),
+.scorecard-table th:nth-child(3),
+.scorecard-table td:nth-child(3),
+.scorecard-table th:nth-child(4),
+.scorecard-table td:nth-child(4),
+.scorecard-table th:nth-child(5),
+.scorecard-table td:nth-child(5),
+.scorecard-table th:nth-child(6),
+.scorecard-table td:nth-child(6) {
+  width: 16.666%;
+}
+
+.scorecard-table .darwin {
+  background: #34383b;
+  color: #fff;
+}
+
+.scorecard-table .medal-white {
+  background: #f7f3e8;
+  color: #111;
+}
+
+.scorecard-table .mens-yellow {
+  background: #efd194;
+  color: #111;
+}
+
+.scorecard-table .total-row td {
+  background: rgba(208, 173, 103, .14);
+  color: var(--cream);
+  font-weight: 950;
+}
+
+.scorecard-table .total-row .darwin {
+  background: #2c3033;
+  color: #fff;
+}
+
+.scorecard-table .total-row .medal-white {
+  background: #ece4d2;
+  color: #111;
+}
+
+.scorecard-table .total-row .mens-yellow {
+  background: #d8b763;
+  color: #111;
+}
+
 .next-up {
   display: grid;
   grid-template-columns: 1fr 122px;
