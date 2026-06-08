@@ -2014,6 +2014,7 @@ function BottomNav() {
           ? `<div class="more-menu">
               <button data-action="more-option" data-tab="media">Pictures & Media</button>
               <button data-action="more-option" data-tab="profiles">Tourists</button>
+              <button data-action="logout">Logout</button>
             </div>`
           : ""
       }
@@ -2159,6 +2160,12 @@ app.addEventListener("click", (event) => {
     state.moreMenuOpen = false;
     state.openHeadToHeadPicker = null;
     state.openIndividualPicker = false;
+  }
+  if (action === "logout") {
+    fetch("/api/auth/logout", { method: "POST" }).finally(() => {
+      window.location.href = "/login.html";
+    });
+    return;
   }
   if (action === "tour-detail") {
     state.restoredScrollTop = 0;

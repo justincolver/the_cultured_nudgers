@@ -1,11 +1,9 @@
-const CACHE_NAME = "cultured-nudgers-v107";
+const CACHE_NAME = "cultured-nudgers-v109";
 const ASSETS = [
-  "./",
-  "./index.html",
+  "./login.html",
   "./styles.css",
   "./app.js",
   "./manifest.json",
-  "./assets/icons/icon.svg",
   "./assets/icons/app-logo.png",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
@@ -64,6 +62,13 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+  if (url.pathname.startsWith("/api/")) return;
+  if (event.request.mode === "navigate") {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {

@@ -1,0 +1,9 @@
+{
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/login", "dest": "/login.html" },
+    { "src": "/login.html", "dest": "/login.html" },
+    { "src": "/(assets/.*|manifest.json|sw.js|styles.css|app.js)", "dest": "/$1" },
+    { "src": "/(.*)", "dest": "/api/protected?path=/$1" }
+  ]
+}
