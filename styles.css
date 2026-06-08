@@ -477,7 +477,7 @@ svg {
 }
 
 .detail-body > .tour-wins-card:first-child {
-  margin-top: 0;
+  margin-top: var(--detail-content-gap);
 }
 
 .tour-wins-score {
