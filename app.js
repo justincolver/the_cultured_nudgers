@@ -1,4 +1,6 @@
 const SUPABASE_REST_URL = "https://dwohuxnsbaupysxtupxs.supabase.co/rest/v1";
+const SUPABASE_STORAGE_URL = "https://dwohuxnsbaupysxtupxs.supabase.co/storage/v1/object/public";
+const SUPABASE_PHOTOS_BUCKET = "Bruges";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_5HdyIHS4QW98ZMEGk7NDvw_JEROoM2z";
 
 let tours = [
@@ -465,6 +467,26 @@ async function loadTourProfiles(tourId) {
   }
 }
 
+async function loadTourPhotos(year) {
+  if (!year || state.tourPhotosByYear[year] || state.tourPhotosLoadingYear === year) return;
+
+  state.tourPhotosLoadingYear = year;
+  state.tourPhotosError = "";
+  render();
+
+  try {
+    state.tourPhotosByYear[year] = await supabaseFetch(
+      `photos?select=*&tour_year=eq.${year}&order=is_group_photo.desc&order=uploaded_at.asc`
+    );
+  } catch (error) {
+    console.warn(error);
+    state.tourPhotosError = "Could not load tour photos.";
+  } finally {
+    state.tourPhotosLoadingYear = null;
+    render();
+  }
+}
+
 function tourPageCacheKey(year, pageKey) {
   return `${year}:${pageKey}`;
 }
@@ -774,6 +796,7 @@ async function loadSupabaseData() {
     if (state.statSubTab === "Individual") loadIndividualMatches();
     if (state.detailTour && ["Overview", "Results"].includes(state.detailSubTab)) {
       const tour = tours.find((item) => item.id === state.detailTour);
+      if (state.detailSubTab === "Overview") loadTourPhotos(tour?.year);
       if (state.detailSubTab === "Results" || tour?.status === "Completed") loadTourResults(tour?.year);
     }
     if (state.detailTour && ["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) {
@@ -840,6 +863,9 @@ let state = {
   tourResultsByYear: {},
   tourResultsLoadingYear: null,
   tourResultsError: "",
+  tourPhotosByYear: {},
+  tourPhotosLoadingYear: null,
+  tourPhotosError: "",
   tourProfilesByTourId: {},
   tourProfilesLoadingTourId: null,
   tourProfilesError: "",
@@ -1161,6 +1187,46 @@ function Tours() {
   return `${PageHero("Tours", "", pageHeroImage(0))}<div class="page-body"><div class="tour-list">${tours.map(TourCard).join("")}</div></div>`;
 }
 
+function photoUrl(filePath = "") {
+  const path = String(filePath || "").trim();
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${SUPABASE_STORAGE_URL}/${SUPABASE_PHOTOS_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+}
+
+function TourPhotos(tour) {
+  const photos = state.tourPhotosByYear[tour.year] || [];
+
+  if (state.tourPhotosLoadingYear === tour.year) {
+    return Card(`<p class="empty-state">Loading tour photos...</p>`);
+  }
+
+  if (state.tourPhotosError) {
+    return Card(`<p class="empty-state">${escapeHtml(state.tourPhotosError)}</p>`);
+  }
+
+  if (!photos.length) {
+    return Card(`<p class="empty-state">No tour photos found for this tour.</p>`);
+  }
+
+  return `
+    <div class="highlight-grid tour-photo-grid">
+      ${photos.map((photo) => {
+        const src = photoUrl(photo.file_path);
+        const caption = photo.caption || (photo.is_group_photo ? "Group Photo" : "Tour Photo");
+        return `
+          <figure>
+            <div class="tour-photo-frame">
+              <img src="${src}" alt="${escapeHtml(caption)}" loading="lazy" />
+            </div>
+            ${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ""}
+          </figure>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
 function TourOverview(tour) {
   const resultRows = state.tourResultsByYear[tour.year] || [];
   const totals = teamPointsForRows(resultRows);
@@ -1168,20 +1234,8 @@ function TourOverview(tour) {
 
   return `
     ${showScorecard ? BillSplitterScorecard(totals.crocs, totals.foz) : ""}
-    ${Card(`
-      <div class="write-up">
-        <div class="avatar captain">TD</div>
-        <div>
-          <h3>Captain's Write-Up</h3>
-          <p>Another epic tour in the books. The weather was brutal, the golf was tougher, but the banter was unmatched. There were heroes, villains, and plenty of lost balls. Till next time...</p>
-        </div>
-      </div>
-      <button class="gold-btn">Read Full Write-Up</button>
-    `)}
-    <h3 class="section-title">Tour Highlights</h3>
-    <div class="highlight-grid">
-      ${tours.map((tourItem) => `<img src="${tourItem.image}" alt="${tourItem.shortTitle} course highlight" />`).join("")}
-    </div>
+    <h3 class="section-title">Tour Photos</h3>
+    ${TourPhotos(tour)}
   `;
 }
 
@@ -1582,6 +1636,13 @@ function formatProfileBody(value = "") {
     .join("");
 }
 
+function profileWordCount(profileRows = []) {
+  return profileRows.reduce((total, row) => {
+    const words = String(row.profile_body || "").trim().match(/\b[\w'-]+\b/g);
+    return total + (words ? words.length : 0);
+  }, 0);
+}
+
 function ResultRow(row) {
   const crocsWon = row.result === "Win Team Crocs";
   const fozWon = row.result === "Win Team Foz";
@@ -1686,6 +1747,17 @@ function TourProfileRail(profileRows) {
   `;
 }
 
+function TourProfileStats(profileRows) {
+  const words = profileWordCount(profileRows);
+  return `
+    <section class="profile-stats-card">
+      <span>Profile Stats</span>
+      <strong>${words.toLocaleString("en-GB")}</strong>
+      <p>Words across ${profileRows.length} profiles</p>
+    </section>
+  `;
+}
+
 function TourRoleCard(row) {
   const player = getPlayerById(row.player_id);
   const playerName = player?.player_name || `Player ${row.player_id}`;
@@ -1715,7 +1787,10 @@ function TourProfiles(tour) {
 
   return `
     <div class="tour-profile-reader">
-      <div class="tour-profile-list with-rail">${profileRows.map(TourProfileCard).join("")}</div>
+      <div class="tour-profile-list with-rail">
+        ${TourProfileStats(profileRows)}
+        ${profileRows.map(TourProfileCard).join("")}
+      </div>
       ${TourProfileRail(profileRows)}
     </div>
   `;
@@ -2715,6 +2790,7 @@ app.addEventListener("click", (event) => {
       const tour = tours.find((item) => item.id === state.detailTour);
       loadTourProfiles(tour?.supabaseId);
       if (tour?.status === "Completed") loadTourResults(tour.year);
+      loadTourPhotos(tour?.year);
     }
   }
   if (action === "home-view-tour") {
@@ -2736,6 +2812,7 @@ app.addEventListener("click", (event) => {
     state.thisTourOverviewPanel = "";
     const tour = state.tab === "this-tour" ? tours[0] : tours.find((item) => item.id === state.detailTour);
     if (state.detailSubTab === "Overview" && state.tab !== "this-tour" && tour?.status === "Completed") loadTourResults(tour?.year);
+    if (state.detailSubTab === "Overview" && state.tab !== "this-tour") loadTourPhotos(tour?.year);
     if (state.detailSubTab === "Results") loadTourResults(tour?.year);
     if (["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) loadTourProfiles(tour?.supabaseId);
   }

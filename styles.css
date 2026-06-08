@@ -10,6 +10,9 @@
   --line: rgba(236, 214, 157, 0.18);
   --shadow: 0 18px 36px rgba(0, 0, 0, 0.34);
   --nav-bg: #052016;
+  --team-blue: #053f5c;
+  --team-red: #5f150a;
+  --team-gold: #bd9a46;
   --tabbar-bottom-pad: max(10px, calc(env(safe-area-inset-bottom) - 18px));
   --tabbar-top-pad: 8px;
   --hero-height: 132px;
@@ -480,7 +483,7 @@ svg {
 }
 
 .detail-body > .tour-wins-card:first-child {
-  margin-top: var(--detail-content-gap);
+  margin-top: 0;
 }
 
 .tour-wins-score {
@@ -720,9 +723,25 @@ svg {
   background: #0a2a1f;
 }
 
+.detail-tabs::before {
+  position: fixed;
+  top: calc(var(--hero-height) + env(safe-area-inset-top));
+  right: 0;
+  left: 0;
+  z-index: 20;
+  height: var(--detail-tabs-gap);
+  background: linear-gradient(180deg, rgba(3, 18, 13, .94), rgba(3, 18, 13, 1));
+  content: "";
+  pointer-events: none;
+}
+
 .detail-body {
-  padding-top: calc(var(--hero-height) + env(safe-area-inset-top) + var(--detail-tabs-gap) + var(--detail-tabs-height) + var(--detail-content-gap) - 30px);
+  padding-top: calc(var(--hero-height) + env(safe-area-inset-top) + var(--detail-tabs-gap) + var(--detail-tabs-height) + var(--detail-content-gap) - var(--page-content-gap));
   padding-bottom: calc(92px + env(safe-area-inset-bottom));
+}
+
+.detail-body > :first-child {
+  margin-top: 0;
 }
 
 .subnav.top {
@@ -788,14 +807,6 @@ svg {
   content: "";
 }
 
-.write-up {
-  display: grid;
-  grid-template-columns: 58px 1fr;
-  gap: 14px;
-  align-items: start;
-}
-
-.write-up h3,
 .card h3,
 .section-title {
   margin: 0 0 10px;
@@ -804,7 +815,6 @@ svg {
   text-transform: uppercase;
 }
 
-.write-up p,
 .card p {
   margin: 0;
   color: var(--cream);
@@ -836,22 +846,6 @@ svg {
   border: 0;
 }
 
-.captain {
-  width: 58px;
-  height: 58px;
-}
-
-.gold-btn {
-  width: 100%;
-  margin-top: 16px;
-  padding: 13px 18px;
-  background: linear-gradient(180deg, #e0bd75, #c39a50);
-  border-radius: 999px;
-  color: white;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
 .section-title {
   margin: 18px 0 10px;
 }
@@ -865,12 +859,47 @@ svg {
   scrollbar-width: none;
 }
 
+.highlight-grid figure {
+  min-width: 0;
+  margin: 0;
+}
+
 .highlight-grid img,
 .next-up img {
   width: 100%;
   height: 72px;
   object-fit: cover;
   border-radius: 8px;
+}
+
+.tour-photo-grid {
+  grid-template-columns: minmax(80%, 1fr);
+  overflow-x: visible;
+}
+
+.tour-photo-frame {
+  max-height: clamp(240px, 58vh, 520px);
+  overflow: hidden;
+  border: 1px solid rgba(248, 242, 223, .12);
+  border-radius: 8px;
+}
+
+.tour-photo-grid img {
+  display: block;
+  height: auto;
+  border-radius: 0;
+  object-fit: unset;
+  object-position: center top;
+}
+
+.tour-photo-grid figcaption {
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hero-card {
@@ -1877,7 +1906,7 @@ svg {
 
 .score-team.crocs {
   justify-content: flex-start;
-  background: #101191;
+  background: var(--team-blue);
   color: #fff;
   font-size: 11px;
   white-space: nowrap;
@@ -1885,7 +1914,7 @@ svg {
 
 .score-team.foz {
   justify-content: flex-end;
-  background: #b50013;
+  background: var(--team-red);
   color: #fff;
   font-size: 11px;
   text-align: right;
@@ -1894,7 +1923,7 @@ svg {
 
 .score-total {
   justify-content: center;
-  background: #f2cf31;
+  background: var(--team-gold);
   color: #05100c;
   font-size: 14px;
 }
@@ -1967,13 +1996,13 @@ svg {
 
 .result-row.crocs-win .result-score.crocs,
 .result-row.crocs-win .result-team.crocs {
-  background: #101191;
+  background: var(--team-blue);
   color: #fff;
 }
 
 .result-row.foz-win .result-score.foz,
 .result-row.foz-win .result-team.foz {
-  background: #b50013;
+  background: var(--team-red);
   color: #fff;
 }
 
@@ -1986,12 +2015,12 @@ svg {
 .tour-profile-list {
   display: grid;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 0;
 }
 
 .tour-profile-reader {
   position: relative;
-  margin-top: -50px;
+  margin-top: 0;
 }
 
 .tour-profile-list.with-rail {
@@ -2048,6 +2077,38 @@ svg {
   border: 1px solid var(--line);
   border-radius: 16px;
   box-shadow: var(--shadow);
+}
+
+.profile-stats-card {
+  padding: 14px 16px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .04), transparent),
+    var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.profile-stats-card span {
+  display: block;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profile-stats-card strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--cream);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.profile-stats-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .tour-profile-head {
@@ -2212,12 +2273,12 @@ svg {
 }
 
 .team-avatar.crocs {
-  border: 1px solid #050642;
+  border: 1px solid var(--team-blue);
   box-shadow: none;
 }
 
 .team-avatar.foz {
-  border: 1px solid #520009;
+  border: 1px solid var(--team-red);
   box-shadow: none;
 }
 
