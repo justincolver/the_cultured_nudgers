@@ -860,6 +860,7 @@ let state = {
   touristDataLoading: false,
   touristDataError: "",
   touristProfileOpen: false,
+  touristProfileReturn: null,
   tourResultsByYear: {},
   tourResultsLoadingYear: null,
   tourResultsError: "",
@@ -900,6 +901,7 @@ function icon(name) {
     share: '<path d="M16 6h3v14H5V6h3"/><path d="M12 3v11M8 7l4-4 4 4"/>',
     more: '<circle cx="12" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
     trophy: '<path d="M8 5h8v4a4 4 0 0 1-8 0V5Z"/><path d="M8 7H5a3 3 0 0 0 3 4M16 7h3a3 3 0 0 1-3 4M12 13v5M9 21h6"/>',
+    star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>',
     ball: '<circle cx="12" cy="12" r="8"/><path d="M9 9h.01M13 8h.01M15 12h.01M10 14h.01"/>',
     flag: '<path d="M6 21V4"/><path d="M6 4h11l-2 4 2 4H6"/>',
     plane: '<path d="m3 11 18-7-7 18-3-8-8-3Z"/>',
@@ -955,11 +957,10 @@ function HeroCard(tour, extra = "") {
 }
 
 function PageHero(title, subtitle = "", image = "") {
-  const heroImage = image || tours[0]?.image || "/assets/images/tours/2026-aberdovey.webp";
-  const background = `linear-gradient(180deg, rgba(2,10,7,.05), rgba(2,10,7,.88)), url('${heroImage}')`;
+  const background = image ? ` style="background-image: linear-gradient(180deg, rgba(2,10,7,.05), rgba(2,10,7,.88)), url('${image}')"` : "";
 
   return `
-    <section class="page-hero" style="background-image: ${background}">
+    <section class="page-hero"${background}>
       <div>
         <h1>${escapeHtml(title)}</h1>
         ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
@@ -1066,32 +1067,39 @@ function ActionTile(label, iconName, view) {
 
 function PlayerCard(player) {
   const nickname = String(player.nick || "").trim();
+  const firstName = player.name.split(" ")[0];
+  const about = String(player.about || "").trim();
+  const aboutText = about && about !== "[PLACEHOLDER]"
+    ? formatProfileBody(about)
+    : `<p>A key member of the Tourists, ${escapeHtml(firstName)} brings competitive spirit, big hitting and even bigger enthusiasm to every tour.</p>`;
+  const listItems = (items = []) => items.map((x) => `<li>${icon("badge")}<span>${escapeHtml(x)}</span></li>`).join("");
   return `
-    <article class="player-card card">
-      <div class="player-top">
+    <article class="player-card">
+      <div class="player-identity">
         <div class="player-photo-wrap ${player.isActive === false ? "inactive" : ""}">
           ${Avatar({ player_name: player.name }, "large")}
           ${player.isActive === false ? `<em>Inactive</em>` : ""}
         </div>
-        <div>
-          <h2>${player.name}</h2>
-          ${nickname ? `<p>"${escapeHtml(nickname)}"</p>` : ""}
-          <span class="role-pill">${player.role}</span>
-        </div>
-        <div class="handicap"><span>Handicap</span>${player.handicap}</div>
+        <h2>${escapeHtml(player.name)}</h2>
+        ${nickname ? `<p>"${escapeHtml(nickname)}"</p>` : ""}
+        <span class="role-pill">${icon("ball")}${escapeHtml(player.role || "Tourist")}</span>
+      </div>
+      <div class="handicap">
+        <span>Handicap</span>
+        <strong>${escapeHtml(String(player.handicap))}</strong>
       </div>
       <div class="player-stats">
-        <span><b>${player.tours}</b>${Number(player.tours) === 1 ? "Tour" : "Tours"}</span>
-        <span><b>${player.tourWins}</b>Tour Wins</span>
-        <span><b>${player.individualWins}</b>Individual Wins</span>
+        <span><span class="player-stat-value">${icon("flag")}<b>${player.tours}</b></span><small>${Number(player.tours) === 1 ? "Tour" : "Tours"}</small></span>
+        <span><span class="player-stat-value">${icon("trophy")}<b>${player.tourWins}</b></span><small>${Number(player.tourWins) === 1 ? "Tour Win" : "Tour Wins"}</small></span>
+        <span><span class="player-stat-value">${icon("star")}<b>${player.individualWins}</b></span><small>Individual Wins</small></span>
       </div>
-      <div class="profile-section">
-        <h3>About ${player.name.split(" ")[0]}</h3>
-        ${formatProfileBody(player.about)}
+      <div class="profile-section profile-panel">
+        <h3>${icon("user")}About ${escapeHtml(firstName)}</h3>
+        ${aboutText}
       </div>
-      <div class="two-col">
-        <div><h3>Strengths</h3>${player.strengths.map((x) => `<p>${escapeHtml(x)}</p>`).join("")}</div>
-        <div><h3>Weaknesses</h3>${player.weaknesses.map((x) => `<p>${escapeHtml(x)}</p>`).join("")}</div>
+      <div class="two-col profile-skill-grid">
+        <div class="profile-panel"><h3>${icon("flag")}Strengths</h3><ul>${listItems(player.strengths)}</ul></div>
+        <div class="profile-panel"><h3>${icon("ball")}Weaknesses</h3><ul>${listItems(player.weaknesses)}</ul></div>
       </div>
     </article>
   `;
@@ -1184,7 +1192,7 @@ function updateCountdown() {
 }
 
 function Tours() {
-  return `${PageHero("Tours", "", pageHeroImage(0))}<div class="page-body"><div class="tour-list">${tours.map(TourCard).join("")}</div></div>`;
+  return `${PageHero("Tours")}<div class="page-body"><div class="tour-list">${tours.map(TourCard).join("")}</div></div>`;
 }
 
 function photoUrl(filePath = "") {
@@ -1821,10 +1829,10 @@ function TeamPlayer(row, teamName = "") {
   const firstName = playerName.split(" ")[0];
   const teamClass = teamName === "Crocs" ? "crocs" : teamName === "Foz" ? "foz" : "";
   return `
-    <article class="team-player">
+    <button class="team-player" data-action="player" data-player-id="${row.player_id}" data-return="tour">
       ${Avatar(player, `team-avatar ${teamClass}`.trim())}
       <strong>${escapeHtml(firstName)}</strong>
-    </article>
+    </button>
   `;
 }
 
@@ -2382,7 +2390,7 @@ function Stats() {
   if (!statTabs.includes(state.statSubTab)) state.statSubTab = "Overview";
 
   return `
-    ${PageHero("Stats", "", pageHeroImage(1))}
+    ${PageHero("Stats")}
     <div class="stats-sticky">
       <nav class="subnav top">
         ${statTabs.map((x) => `<button class="${x === state.statSubTab ? "active" : ""}" data-action="stat-tab" data-tab="${x}">${x}</button>`).join("")}
@@ -2516,12 +2524,10 @@ function TouristRoster(playersList, selectedIndex, showActiveSelection = false) 
 
 function TouristProfilePage(player) {
   return `
-    <button class="tourist-back" data-action="tourist-back" aria-label="Back to Tourists">${icon("back")}</button>
-    ${PlayerCard(player)}
-    ${Card(`
-      <h3>Career Highlights</h3>
-      <p>[PLACEHOLDER]</p>
-    `)}
+    <div class="tourist-profile-page">
+      <button class="tourist-back" data-action="tourist-back" aria-label="Back to Tourists">${icon("back")}</button>
+      ${PlayerCard(player)}
+    </div>
   `;
 }
 
@@ -2531,20 +2537,20 @@ function Profiles() {
 
   if (state.touristDataLoading) {
     return `
-      ${PageHero("Tourists", "", pageHeroImage(2))}
+      ${PageHero("Tourists")}
       <div class="page-body">${Card(`<p class="empty-state">Loading tourist profiles...</p>`)}</div>
     `;
   }
 
   if (state.touristDataError) {
     return `
-      ${PageHero("Tourists", "", pageHeroImage(2))}
+      ${PageHero("Tourists")}
       <div class="page-body">${Card(`<p class="empty-state">${escapeHtml(state.touristDataError)}</p>`)}</div>
     `;
   }
 
   return `
-    ${PageHero("Tourists", "", pageHeroImage(2))}
+    ${PageHero("Tourists", "", state.touristProfileOpen ? "/assets/tourist-background.png" : "")}
     <div class="page-body">
       ${
         state.touristProfileOpen
@@ -2557,7 +2563,7 @@ function Profiles() {
 
 function Media() {
   return `
-    ${PageHero("Pictures & Media", "", pageHeroImage(3))}
+    ${PageHero("Pictures & Media")}
     <div class="page-body">
       ${Card(`
         <div class="media-video">
@@ -2723,7 +2729,11 @@ function render() {
   };
   if (!screens[state.tab]) state.tab = "home";
   const screenContent = state.tab === "this-tour" ? ThisTour() : state.detailTour ? TourDetail() : screens[state.tab]();
-  const contentClass = `content ${state.tourPageEditingKey ? "editing-tour-page" : ""}`.trim();
+  const contentClass = [
+    "content",
+    state.tourPageEditingKey ? "editing-tour-page" : "",
+    state.tab === "profiles" && state.touristProfileOpen ? "tourist-profile-open" : "",
+  ].filter(Boolean).join(" ");
   app.innerHTML = `
     <div class="phone-shell">
       <div class="${contentClass}">${screenContent}</div>
@@ -2864,12 +2874,45 @@ app.addEventListener("click", (event) => {
     state.statsActiveOnly = target.checked;
   }
   if (action === "player") {
+    const touristPlayers = buildTouristPlayers();
+    const requestedIndex = target.dataset.playerId
+      ? touristPlayers.findIndex((player) => Number(player.id) === Number(target.dataset.playerId))
+      : Number(target.dataset.index);
+    const content = document.querySelector(".content");
+    const shouldReturnToTour = target.dataset.return === "tour" && state.tab !== "profiles";
+
     state.restoredScrollTop = 0;
-    state.playerIndex = Number(target.dataset.index);
-    if (state.tab === "profiles") state.touristProfileOpen = true;
+    state.playerIndex = Math.max(0, requestedIndex);
+    if (shouldReturnToTour) {
+      state.touristProfileReturn = {
+        tab: state.tab,
+        detailTour: state.detailTour,
+        detailSubTab: state.detailSubTab,
+        thisTourOverviewPanel: state.thisTourOverviewPanel,
+        thisTourOverviewYear: state.thisTourOverviewYear,
+        scrollTop: content ? Math.round(content.scrollTop) : 0,
+      };
+      state.tab = "profiles";
+      state.detailTour = null;
+      state.moreMenuOpen = false;
+    } else {
+      state.touristProfileReturn = null;
+    }
+    state.touristProfileOpen = true;
   }
   if (action === "tourist-back") {
-    state.restoredScrollTop = 0;
+    if (state.touristProfileReturn) {
+      const returnTarget = state.touristProfileReturn;
+      state.tab = returnTarget.tab || "profiles";
+      state.detailTour = returnTarget.detailTour || null;
+      state.detailSubTab = returnTarget.detailSubTab || "Overview";
+      state.thisTourOverviewPanel = returnTarget.thisTourOverviewPanel || "";
+      state.thisTourOverviewYear = returnTarget.thisTourOverviewYear || null;
+      state.restoredScrollTop = returnTarget.scrollTop || 0;
+      state.touristProfileReturn = null;
+    } else {
+      state.restoredScrollTop = 0;
+    }
     state.touristProfileOpen = false;
   }
   if (action === "toggle-h2h-picker") {
