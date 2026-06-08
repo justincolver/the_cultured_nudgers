@@ -1455,7 +1455,7 @@ function ThisTourOverviewFeature() {
   const isEditing = state.tourPageEditingKey === cacheKey;
 
   return `
-    <section class="overview-feature-screen">
+    <section class="overview-feature-screen ${isEditing ? "editing" : ""}">
       <div class="overview-feature-topbar">
         <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
         ${!isLoading ? `<button class="cms-edit-btn" data-action="${isEditing ? "save-tour-page" : "edit-tour-page"}">${isSaving ? "Saving..." : isEditing ? "Save" : "Edit"}</button>` : ""}
@@ -1470,7 +1470,7 @@ function ThisTourOverviewFeature() {
         ${!isLoading ? Card(`
           ${isEditing ? TourPageEditorBox(blocks) : TourPageReadBox(blocks)}
           ${saved && !isSaving ? `<p class="cms-save-note">Saved.</p>` : ""}
-        `, "cms-editor-card") : ""}
+        `, `cms-editor-card ${isEditing ? "editing" : ""}`) : ""}
       </div>
     </section>
   `;
@@ -2482,7 +2482,20 @@ function Profiles() {
 function Media() {
   return `
     ${PageHero("Pictures & Media", "", pageHeroImage(3))}
-    <div class="page-body">${Card(`<p class="empty-state">Pictures & Media coming soon.</p>`)}</div>
+    <div class="page-body">
+      ${Card(`
+        <div class="media-video">
+          <iframe
+            src="https://player.vimeo.com/video/1109696115?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
+            frameborder="0"
+            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            title="Nudgers 2024 Highlights - Le Touquet"
+            allowfullscreen
+          ></iframe>
+        </div>
+      `, "media-card")}
+    </div>
   `;
 }
 
@@ -2634,9 +2647,10 @@ function render() {
   };
   if (!screens[state.tab]) state.tab = "home";
   const screenContent = state.tab === "this-tour" ? ThisTour() : state.detailTour ? TourDetail() : screens[state.tab]();
+  const contentClass = `content ${state.tourPageEditingKey ? "editing-tour-page" : ""}`.trim();
   app.innerHTML = `
     <div class="phone-shell">
-      <div class="content">${screenContent}</div>
+      <div class="${contentClass}">${screenContent}</div>
       ${BottomNav()}
     </div>
   `;

@@ -87,6 +87,10 @@ button {
   -webkit-overflow-scrolling: touch;
 }
 
+.content.editing-tour-page {
+  overflow-y: hidden;
+}
+
 .app-header {
   position: sticky;
   top: 0;
@@ -909,6 +913,14 @@ svg {
   padding-top: max(8px, env(safe-area-inset-top));
 }
 
+.content.editing-tour-page .overview-feature-screen {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .overview-feature-screen h1 {
   margin: 0 0 16px;
   color: var(--cream);
@@ -971,12 +983,28 @@ svg {
   padding-bottom: 18px;
 }
 
+.content.editing-tour-page .overview-feature-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  padding-bottom: 0;
+}
+
 .overview-feature-body .scorecard-card {
   margin-top: 0;
 }
 
 .cms-editor-card {
   margin-bottom: 16px;
+}
+
+.cms-editor-card.editing {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  margin-bottom: 0;
+  overflow: hidden;
 }
 
 .cms-edit-btn {
@@ -1002,6 +1030,8 @@ svg {
 .cms-content-editor {
   min-height: 280px;
   width: 100%;
+  flex: 1;
+  overflow-y: auto;
   outline: 2px solid rgba(208, 173, 103, .28);
   outline-offset: 0;
   caret-color: var(--gold-soft);
@@ -1021,6 +1051,12 @@ svg {
   padding: 0;
   background: transparent;
   border: 0;
+}
+
+.cms-editor-card.editing .cms-content-editor {
+  min-height: 0;
+  max-height: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .cms-content-editor:empty::before {
@@ -1198,6 +1234,25 @@ svg {
 .scorecard-table .total-row .mens-yellow {
   background: #d8b763;
   color: #111;
+}
+
+.media-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.media-video {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #010907;
+}
+
+.media-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .next-up {
