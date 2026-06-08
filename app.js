@@ -118,6 +118,8 @@ function headshotForPlayer(player) {
     "nick-gubbins": "assets/images/headshots/nick-gubbins.png",
     "patch-foster": "assets/images/headshots/patch-foster.png",
     "peter-crocombe": "assets/images/headshots/peter-crocombe.png",
+    "raff-mckenzie": "assets/images/headshots/raff-mckenzie.png",
+    "raff-mckensie": "assets/images/headshots/raff-mckenzie.png",
     "rob-moore": "assets/images/headshots/rob-moore.png",
     "sam-foster": "assets/images/headshots/sam-foster.png",
     "simon-collings": "assets/images/headshots/simon-collings.png",
@@ -126,6 +128,7 @@ function headshotForPlayer(player) {
     "tom-tynan": "assets/images/headshots/tom-tynan.png",
     "tom-wigglesworth": "assets/images/headshots/tom-wigglesworth.png",
     "will-gubbins": "assets/images/headshots/will-gubbins.png",
+    "will-major": "assets/images/headshots/will-major.png",
     "will-macpherson": "assets/images/headshots/will-macpherson.png",
   };
   return headshots[slugifyName(player.player_name)] || "";
@@ -666,9 +669,9 @@ async function loadSupabaseData() {
     if (state.statSubTab === "Overview") loadStatsOverview();
     if (state.statSubTab === "Head-to-Head") loadHeadToHeadMatches();
     if (state.statSubTab === "Individual") loadIndividualMatches();
-    if (state.detailTour && state.detailSubTab === "Results") {
+    if (state.detailTour && ["Overview", "Results"].includes(state.detailSubTab)) {
       const tour = tours.find((item) => item.id === state.detailTour);
-      loadTourResults(tour?.year);
+      if (state.detailSubTab === "Results" || tour?.status === "Completed") loadTourResults(tour?.year);
     }
     if (state.detailTour && ["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) {
       const tour = tours.find((item) => item.id === state.detailTour);
@@ -875,6 +878,26 @@ function DetailHeroMeta(tour) {
   `;
 }
 
+function BillSplitterScorecard(crocombePoints = 0, fosterPoints = 0) {
+  return `
+    <section class="tour-wins-card">
+      <div class="tour-wins-score">
+        <div class="tour-wins-team crocs">
+          <strong>Team Crocombe</strong>
+          <b>${formatTeamPoints(crocombePoints)}</b>
+        </div>
+        <div class="tour-wins-trophy" aria-label="Bill Splitter Trophy">
+          <img src="assets/images/trophies/bill-splitter-trophy-lite.png" alt="" aria-hidden="true" />
+        </div>
+        <div class="tour-wins-team foz">
+          <strong>Team Foster</strong>
+          <b>${formatTeamPoints(fosterPoints)}</b>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function TourCard(tour) {
   return `
     <button class="tour-card" data-action="tour-detail" data-tour="${tour.id}" style="background-image: linear-gradient(90deg, rgba(2,14,9,.68), rgba(2,14,9,.1)), url('${tour.image}')">
@@ -991,16 +1014,7 @@ function Home() {
         ${Avatar(samFoster, "defending-avatar")}
       </div>
     </section>
-    <section class="tour-wins-card">
-      <span>All-Time Tour Score</span>
-      <div class="tour-wins-score">
-        <strong>Team<br>Crocombe</strong>
-        <b>${formatTeamPoints(state.teamTourWins?.crocombe || 0)}</b>
-        <i></i>
-        <b>${formatTeamPoints(state.teamTourWins?.foster || 0)}</b>
-        <strong>Team<br>Foster</strong>
-      </div>
-    </section>
+    ${BillSplitterScorecard(state.teamTourWins?.crocombe || 0, state.teamTourWins?.foster || 0)}
   `;
 }
 
@@ -1032,8 +1046,13 @@ function Tours() {
   return `${PageHero("Tours", "", pageHeroImage(0))}<div class="page-body"><div class="tour-list">${tours.map(TourCard).join("")}</div></div>`;
 }
 
-function TourOverview() {
+function TourOverview(tour) {
+  const resultRows = state.tourResultsByYear[tour.year] || [];
+  const totals = teamPointsForRows(resultRows);
+  const showScorecard = tour.status === "Completed" && resultRows.length;
+
   return `
+    ${showScorecard ? BillSplitterScorecard(totals.crocs, totals.foz) : ""}
     ${Card(`
       <div class="write-up">
         <div class="avatar captain">TD</div>
@@ -1396,7 +1415,7 @@ function TourDetail({ forcedTour = null, thisTourMode = false } = {}) {
   const tour = foundTour || tours[0];
   const detailTabs = ["Overview", "Results", "Teams", "Profiles", "Roles", "Awards", "Stats"];
   const detailBody = `
-    ${state.detailSubTab === "Overview" ? (thisTourMode ? ThisTourOverview() : TourOverview()) : ""}
+    ${state.detailSubTab === "Overview" ? (thisTourMode ? ThisTourOverview() : TourOverview(tour)) : ""}
     ${state.detailSubTab === "Results" ? TourResults(tour) : ""}
     ${state.detailSubTab === "Teams" ? TourTeams(tour) : ""}
     ${state.detailSubTab === "Profiles" ? TourProfiles(tour) : ""}
@@ -1405,7 +1424,6 @@ function TourDetail({ forcedTour = null, thisTourMode = false } = {}) {
   `;
 
   return `
-    ${Header("", "locked")}
     <section class="detail-hero" style="background-image: linear-gradient(180deg, rgba(2,10,7,.05), rgba(2,10,7,.88)), url('${tour.image}')">
       <div class="detail-hero-content">
         <h2>${escapeHtml(tourDetailHeroTitle(tour))}</h2>
@@ -2242,7 +2260,9 @@ app.addEventListener("click", (event) => {
     } else {
       state.detailTour = target.dataset.tour;
       state.detailSubTab = "Overview";
-      loadTourProfiles(tours.find((item) => item.id === state.detailTour)?.supabaseId);
+      const tour = tours.find((item) => item.id === state.detailTour);
+      loadTourProfiles(tour?.supabaseId);
+      if (tour?.status === "Completed") loadTourResults(tour.year);
     }
   }
   if (action === "home-view-tour") {
@@ -2261,6 +2281,7 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.detailSubTab = target.dataset.tab;
     const tour = state.tab === "this-tour" ? tours[0] : tours.find((item) => item.id === state.detailTour);
+    if (state.detailSubTab === "Overview" && state.tab !== "this-tour" && tour?.status === "Completed") loadTourResults(tour?.year);
     if (state.detailSubTab === "Results") loadTourResults(tour?.year);
     if (["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) loadTourProfiles(tour?.supabaseId);
   }

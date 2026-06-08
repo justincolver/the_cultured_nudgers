@@ -17,7 +17,7 @@
   --hero-bottom-pad: 14px;
   --detail-tabs-gap: 8px;
   --detail-tabs-height: 44px;
-  --detail-content-gap: 20px;
+  --detail-content-gap: 14px;
   --page-content-gap: 14px;
   --page-tabs-height: 46px;
   --stats-body-tabs-offset: calc(var(--page-tabs-height) + 2px);
@@ -463,86 +463,84 @@ svg {
 }
 
 .tour-wins-card {
-  display: grid;
-  gap: 14px;
   margin-top: 16px;
-  padding: 18px;
-  background:
-    radial-gradient(circle at 50% 82%, rgba(239, 209, 148, .14), transparent 42%),
-    linear-gradient(100deg, rgba(16, 17, 145, .9), rgba(8, 37, 27, .72) 49%, rgba(181, 0, 19, .92));
-  border: 1px solid var(--line);
-  border-radius: 18px;
+  padding: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(4, 24, 17, .96), rgba(3, 18, 13, .94));
+  border: 1px solid rgba(208, 173, 103, .72);
+  border-radius: 8px;
   box-shadow: var(--shadow);
 }
 
-.tour-wins-card > span {
-  color: var(--gold-soft);
-  font-size: 12px;
-  font-weight: 900;
-  text-align: center;
-  text-transform: uppercase;
+.detail-body > .tour-wins-card:first-child {
+  margin-top: 0;
 }
 
 .tour-wins-score {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px 48px 52px minmax(0, 1fr);
-  align-items: stretch;
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
+  grid-template-columns: minmax(0, 1fr) 86px minmax(0, 1fr);
+  min-height: 92px;
+  align-items: center;
+  background:
+    linear-gradient(90deg, rgba(10, 65, 129, .92), rgba(9, 36, 28, .82) 48%, rgba(122, 18, 13, .94)),
+    rgba(3, 18, 13, .9);
 }
 
-.tour-wins-score strong,
-.tour-wins-score b {
-  min-height: 48px;
+.tour-wins-team {
   display: grid;
   place-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 92px;
+  padding: 12px 8px;
   text-align: center;
-  line-height: 1.05;
 }
 
-.tour-wins-score strong {
-  color: #fff;
-  font-size: 12px;
+.tour-wins-team strong {
+  color: rgba(248, 242, 223, .92);
+  font-size: 10px;
   font-weight: 950;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
-.tour-wins-score strong:first-child {
-  background: transparent;
-}
-
-.tour-wins-score strong:last-child {
-  background: transparent;
-}
-
-.tour-wins-score b {
-  background: transparent;
+.tour-wins-team b {
   color: var(--cream);
-  font-size: 32px;
-  font-weight: 950;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 44px;
+  font-weight: 900;
+  line-height: .9;
   text-shadow: 0 4px 16px rgba(0, 0, 0, .42);
 }
 
-.tour-wins-score i {
-  position: relative;
+.tour-wins-trophy {
   display: grid;
   place-items: center;
-  background: transparent;
+  align-self: stretch;
+  min-width: 0;
+  text-align: center;
 }
 
-.tour-wins-score i::before {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  content: "VS";
-  color: var(--gold);
-  border: 1px solid var(--gold);
-  border-radius: 50%;
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 900;
+.tour-wins-trophy img {
+  width: 76px;
+  height: 84px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, .45));
+}
+
+@media (max-width: 360px) {
+  .tour-wins-score {
+    grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr);
+  }
+
+  .tour-wins-team b {
+    font-size: 38px;
+  }
+
+  .tour-wins-trophy img {
+    width: 68px;
+    height: 76px;
+  }
 }
 
 .mini-stat {
@@ -716,7 +714,7 @@ svg {
 }
 
 .detail-body {
-  padding-top: calc(var(--hero-height) + env(safe-area-inset-top) + var(--detail-tabs-gap) + var(--detail-tabs-height) + var(--detail-content-gap));
+  padding-top: calc(var(--hero-height) + env(safe-area-inset-top) + var(--detail-tabs-gap) + var(--detail-tabs-height) + var(--detail-content-gap) - 30px);
 }
 
 .subnav.top {

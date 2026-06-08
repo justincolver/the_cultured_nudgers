@@ -1,4 +1,4 @@
-const CACHE_NAME = "cultured-nudgers-v109";
+const CACHE_NAME = "cultured-nudgers-v112";
 const ASSETS = [
   "./login.html",
   "./styles.css",
@@ -19,6 +19,7 @@ const ASSETS = [
   "./assets/images/tours/2024-hardelot-le-touquet.jpg",
   "./assets/images/tours/2025-bruges-damme.jpg",
   "./assets/images/tours/2026-aberdovey.webp",
+  "./assets/images/trophies/bill-splitter-trophy-lite.png",
   "./assets/images/headshots/bander-pyke.png",
   "./assets/images/headshots/brian-crotty.png",
   "./assets/images/headshots/eamonn-sheehy.png",
@@ -37,6 +38,7 @@ const ASSETS = [
   "./assets/images/headshots/nick-gubbins.png",
   "./assets/images/headshots/patch-foster.png",
   "./assets/images/headshots/peter-crocombe.png",
+  "./assets/images/headshots/raff-mckenzie.png",
   "./assets/images/headshots/rob-moore.png",
   "./assets/images/headshots/sam-foster.png",
   "./assets/images/headshots/simon-collings.png",
@@ -45,6 +47,7 @@ const ASSETS = [
   "./assets/images/headshots/tom-tynan.png",
   "./assets/images/headshots/tom-wigglesworth.png",
   "./assets/images/headshots/will-gubbins.png",
+  "./assets/images/headshots/will-major.png",
   "./assets/images/headshots/will-macpherson.png"
 ];
 
