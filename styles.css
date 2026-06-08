@@ -2222,6 +2222,9 @@ svg {
     --detail-hero-height: 92px;
     --detail-hero-title-pad: 32px;
     --detail-hero-bottom-pad: 9px;
+    --page-hero-height: var(--detail-hero-height);
+    --page-hero-title-pad: var(--detail-hero-title-pad);
+    --page-hero-bottom-pad: var(--detail-hero-bottom-pad);
   }
 }
 

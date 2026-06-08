@@ -806,15 +806,22 @@ function HeroCard(tour, extra = "") {
   `;
 }
 
-function PageHero(title, subtitle = "") {
+function PageHero(title, subtitle = "", image = "") {
+  const heroImage = image || tours[0]?.image || "assets/images/tours/2026-aberdovey.webp";
+  const background = `linear-gradient(180deg, rgba(2,10,7,.05), rgba(2,10,7,.88)), url('${heroImage}')`;
+
   return `
-    <section class="page-hero">
+    <section class="page-hero" style="background-image: ${background}">
       <div>
         <h1>${escapeHtml(title)}</h1>
         ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
       </div>
     </section>
   `;
+}
+
+function pageHeroImage(offset = 0) {
+  return tours[offset]?.image || tours[0]?.image || "assets/images/tours/2026-aberdovey.webp";
 }
 
 function TourCard(tour) {
@@ -970,7 +977,7 @@ function updateCountdown() {
 }
 
 function Tours() {
-  return `${PageHero("Tours")}<div class="page-body"><div class="tour-list">${tours.map(TourCard).join("")}</div></div>`;
+  return `${PageHero("Tours", "", pageHeroImage(0))}<div class="page-body"><div class="tour-list">${tours.map(TourCard).join("")}</div></div>`;
 }
 
 function TourOverview() {
@@ -1820,7 +1827,7 @@ function Stats() {
   if (!statTabs.includes(state.statSubTab)) state.statSubTab = "Overview";
 
   return `
-    ${PageHero("Stats")}
+    ${PageHero("Stats", "", pageHeroImage(1))}
     <div class="stats-sticky">
       <nav class="subnav top">
         ${statTabs.map((x) => `<button class="${x === state.statSubTab ? "active" : ""}" data-action="stat-tab" data-tab="${x}">${x}</button>`).join("")}
@@ -1969,20 +1976,20 @@ function Profiles() {
 
   if (state.touristDataLoading) {
     return `
-      ${PageHero("Tourists")}
+      ${PageHero("Tourists", "", pageHeroImage(2))}
       <div class="page-body">${Card(`<p class="empty-state">Loading tourist profiles...</p>`)}</div>
     `;
   }
 
   if (state.touristDataError) {
     return `
-      ${PageHero("Tourists")}
+      ${PageHero("Tourists", "", pageHeroImage(2))}
       <div class="page-body">${Card(`<p class="empty-state">${escapeHtml(state.touristDataError)}</p>`)}</div>
     `;
   }
 
   return `
-    ${PageHero("Tourists")}
+    ${PageHero("Tourists", "", pageHeroImage(2))}
     <div class="page-body">
       ${
         state.touristProfileOpen
@@ -1995,7 +2002,7 @@ function Profiles() {
 
 function Media() {
   return `
-    ${PageHero("Pictures & Media")}
+    ${PageHero("Pictures & Media", "", pageHeroImage(3))}
     <div class="page-body">${Card(`<p class="empty-state">Pictures & Media coming soon.</p>`)}</div>
   `;
 }
