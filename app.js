@@ -902,9 +902,12 @@ let state = {
   tourPageDrafts: {},
   moreMenuOpen: false,
   restoredScrollTop: 0,
+  updateAvailable: false,
 };
 
 const app = document.querySelector("#app");
+let waitingServiceWorker = null;
+let refreshingForUpdate = false;
 
 function icon(name) {
   const icons = {
@@ -928,6 +931,7 @@ function icon(name) {
     phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8 10a16 16 0 0 0 6 6l1.4-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/>',
     suitcase: '<path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1"/><rect x="5" y="6" width="14" height="15" rx="2"/><path d="M9 6v15M15 6v15"/>',
     swap: '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
+    refresh: '<path d="M21 12a9 9 0 0 1-15.4 6.4L3 16"/><path d="M3 21v-5h5"/><path d="M3 12A9 9 0 0 1 18.4 5.6L21 8"/><path d="M21 3v5h-5"/>',
   };
   return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.home}</svg>`;
 }
@@ -935,6 +939,20 @@ function icon(name) {
 function Logo() {
   return `
     <img class="home-logo-image" src="/assets/images/homepage-logo.png" alt="The Cultured Nudgers" />
+  `;
+}
+
+function UpdateAvailableBanner() {
+  if (!state.updateAvailable) return "";
+  return `
+    <button class="update-banner" data-action="refresh-app-update" type="button">
+      <span class="update-banner-icon">${icon("share")}</span>
+      <span class="update-banner-copy">
+        <strong>New version available</strong>
+        <small>Tap to refresh and get the latest features.</small>
+      </span>
+      <span class="update-banner-cta">Refresh ${icon("refresh")}</span>
+    </button>
   `;
 }
 
@@ -1184,7 +1202,7 @@ function Home() {
   if (!hasLoadedSupabase) {
     return `
       ${Header()}
-      <section class="home-logo">${Logo()}<p>Welcome back, Nudger 👋</p></section>
+      <section class="home-logo">${Logo()}${UpdateAvailableBanner()}<p>Welcome back, Nudger 👋</p></section>
       ${Card(`
         <span class="eyebrow">Next Tour</span>
         <div class="loading-card">
@@ -1207,6 +1225,7 @@ function Home() {
     ${Header()}
     <section class="home-logo">
       ${Logo()}
+      ${UpdateAvailableBanner()}
       <p>Welcome back, Nudger 👋</p>
       <div class="home-tour-clock">
         ${daysSincePrevious !== null && previous ? `<span>${daysSincePrevious} days since ${escapeHtml(tourDisplayName(previous))}</span>` : ""}
@@ -1378,11 +1397,16 @@ const tourFilmEmbedsByYear = {
 };
 
 function TourFilm(tour) {
-  const film = tourFilmEmbedsByYear[Number(tour.year)];
+  const year = Number(tour.year);
+  const film = tourFilmEmbedsByYear[year];
   if (!film) return "";
+  const sharedFilmNote = [2021, 2022, 2023].includes(year)
+    ? `<p class="tour-film-note">The following video is a summary of tours between 2021-2023</p>`
+    : "";
 
   return `
     <h3 class="section-title">Tour Films</h3>
+    ${sharedFilmNote}
     <div class="tour-film-frame">
       <iframe
         src="${escapeHtml(film.src)}"
@@ -2665,6 +2689,7 @@ function formatHandicapChange(value) {
 }
 
 function mostImprovedHandicap(activeOnly = true) {
+  const pending = { name: "TBC - pending input of this year's handicaps", value: "", detail: "" };
   const currentTour = currentStatsTour();
   const currentYear = Number(currentTour?.year);
   const currentTourId = Number(currentTour?.supabaseId);
@@ -2686,13 +2711,13 @@ function mostImprovedHandicap(activeOnly = true) {
     }))
     .filter((row) => Number.isFinite(row.handicap) && Number.isFinite(row.playerId) && Number.isFinite(row.year));
 
-  if (!Number.isFinite(currentYear)) return { name: "TBC", value: "", detail: "" };
+  if (!Number.isFinite(currentYear)) return pending;
 
   const currentRows = rows.filter((row) =>
     Number.isFinite(currentTourId) ? row.tourId === currentTourId : row.year === currentYear
   );
 
-  if (!currentRows.length) return { name: "TBC", value: "", detail: "" };
+  if (!currentRows.length) return pending;
 
   const improvements = currentRows
     .filter((row) => !activeOnly || playerById[row.playerId]?.is_active !== false)
@@ -2713,7 +2738,7 @@ function mostImprovedHandicap(activeOnly = true) {
   const leaders = leadersBy(improvements, (record) => record.drop, (a, b) => a.playerName.localeCompare(b.playerName));
   const leader = leaders[0];
 
-  if (!leader) return { name: "TBC", value: "", detail: "" };
+  if (!leader) return pending;
 
   return {
     name: namesForLeaders(leaders),
@@ -2756,6 +2781,7 @@ function StatsOverview() {
       ${LeaderStat("Most Points", namesForLeaders(stats.mostPointsLeaders), formatTeamPoints(stats.mostPoints?.points || 0), `${stats.mostPoints?.wins || 0} wins`)}
       ${LeaderStat("Most Matches Played", namesForLeaders(stats.mostMatchesLeaders), String(stats.mostMatches?.matches || 0), "matches")}
       ${LeaderStat("Most Improved", mostImproved.name, mostImproved.value, mostImproved.detail)}
+      ${LeaderStat("Total Matches Played", String(stats.totalMatches), "")}
     </div>
     ${OverviewLeaderboard(stats.records)}
   `;
@@ -3328,6 +3354,13 @@ app.addEventListener("click", (event) => {
     state.thisTourOverviewPanel = "";
     loadTourProfiles(tours[0]?.supabaseId);
   }
+  if (action === "refresh-app-update") {
+    if (waitingServiceWorker) {
+      waitingServiceWorker.postMessage({ type: "SKIP_WAITING" });
+      return;
+    }
+    window.location.reload();
+  }
   if (action === "back") {
     state.restoredScrollTop = 0;
     state.detailTour = null;
@@ -3565,8 +3598,36 @@ if (!countdownTimer) {
   countdownTimer = window.setInterval(updateCountdown, 1000);
 }
 
+function showUpdateAvailable(worker) {
+  waitingServiceWorker = worker;
+  if (!state.updateAvailable) {
+    state.updateAvailable = true;
+    render();
+  }
+}
+
 if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshingForUpdate) return;
+    refreshingForUpdate = true;
+    window.location.reload();
+  });
+
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker.register("./sw.js").then((registration) => {
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        showUpdateAvailable(registration.waiting);
+      }
+
+      registration.addEventListener("updatefound", () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            showUpdateAvailable(newWorker);
+          }
+        });
+      });
+    }).catch(() => {});
   });
 }

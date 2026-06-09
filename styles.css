@@ -185,6 +185,82 @@ svg {
   object-fit: contain;
 }
 
+.update-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 340px);
+  margin: 2px auto 4px;
+  padding: 10px;
+  background:
+    linear-gradient(135deg, rgba(208, 173, 103, .09), rgba(248, 242, 223, .04)),
+    rgba(4, 24, 17, .84);
+  border: 1px solid rgba(208, 173, 103, .76);
+  border-radius: 10px;
+  box-shadow: 0 14px 26px rgba(1, 9, 7, .42), inset 0 1px 0 rgba(248, 242, 223, .08);
+  color: var(--cream);
+  text-align: left;
+}
+
+.update-banner-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 2px solid var(--gold);
+  border-radius: 999px;
+  color: var(--gold);
+}
+
+.update-banner-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.update-banner-copy {
+  min-width: 0;
+  text-transform: none;
+}
+
+.update-banner-copy strong {
+  display: block;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.update-banner-copy small {
+  display: block;
+  margin-top: 2px;
+  color: var(--cream);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.update-banner-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, #f4d889, #c59a42);
+  border-radius: 6px;
+  color: #06170f;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.update-banner-cta svg {
+  width: 16px;
+  height: 16px;
+}
+
 .next-tour,
 .hero-card,
 .tour-card,
@@ -945,6 +1021,13 @@ svg {
   border: 1px solid rgba(248, 242, 223, .12);
   border-radius: 12px;
   box-shadow: var(--shadow);
+}
+
+.tour-film-note {
+  margin: -3px 0 10px;
+  color: var(--cream);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .tour-film-frame iframe {
