@@ -467,6 +467,32 @@ async function loadTourPhotos(year) {
   }
 }
 
+async function loadMatchReport(year) {
+  if (
+    !year ||
+    Object.prototype.hasOwnProperty.call(state.matchReportsByYear, year) ||
+    state.matchReportsLoadingYear === year
+  ) {
+    return;
+  }
+
+  state.matchReportsLoadingYear = year;
+  state.matchReportsError = "";
+  render();
+
+  try {
+    const rows = await supabaseFetch(`match_reports?select=*&year=eq.${year}&limit=1`);
+    state.matchReportsByYear[year] = rows[0] || null;
+  } catch (error) {
+    console.warn(error);
+    state.matchReportsError = "Could not load match report.";
+    state.matchReportsByYear[year] = null;
+  } finally {
+    state.matchReportsLoadingYear = null;
+    render();
+  }
+}
+
 async function loadTourBrochures(year) {
   if (!year || state.tourBrochuresByYear[year] || state.tourBrochuresLoadingYear === year) return;
 
@@ -808,7 +834,10 @@ async function loadSupabaseData() {
     if (state.statSubTab === "Individual") loadIndividualMatches();
     if (state.detailTour && ["Overview", "Results", "Brochures"].includes(state.detailSubTab)) {
       const tour = tours.find((item) => item.id === state.detailTour);
-      if (state.detailSubTab === "Overview") loadTourPhotos(tour?.year);
+      if (state.detailSubTab === "Overview") {
+        loadTourPhotos(tour?.year);
+        loadMatchReport(tour?.year);
+      }
       if (state.detailSubTab === "Results" || tour?.status === "Completed") loadTourResults(tour?.year);
       if (state.detailSubTab === "Brochures") loadTourBrochures(tour?.year);
     }
@@ -884,6 +913,10 @@ let state = {
   tourPhotosByYear: {},
   tourPhotosLoadingYear: null,
   tourPhotosError: "",
+  matchReportsByYear: {},
+  matchReportsLoadingYear: null,
+  matchReportsError: "",
+  matchReportOpenYear: null,
   tourBrochuresByYear: {},
   tourBrochuresLoadingYear: null,
   tourBrochuresError: "",
@@ -1440,6 +1473,64 @@ function TourFilm(tour) {
   `;
 }
 
+function getMatchReportText(report) {
+  return String(report?.match_report || report?.report || report?.body || "").trim();
+}
+
+function MatchReportParagraphs(text) {
+  const paragraphs = String(text)
+    .split(/\n{2,}|\r?\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  return paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
+}
+
+function MatchReportTeaser(tour) {
+  const report = state.matchReportsByYear[tour.year];
+  const text = getMatchReportText(report);
+
+  if (state.matchReportsLoadingYear === tour.year) {
+    return Card(`<p class="empty-state">Loading match report...</p>`, "match-report-card");
+  }
+
+  if (state.matchReportsError && report === undefined) {
+    return Card(`<p class="empty-state">${escapeHtml(state.matchReportsError)}</p>`, "match-report-card");
+  }
+
+  if (!text) return "";
+
+  return `
+    <h3 class="section-title">Tour Report</h3>
+    <section class="match-report-card">
+      <span class="match-report-quote" aria-hidden="true">“</span>
+      <p class="match-report-preview">${escapeHtml(text)}</p>
+      <button class="match-report-read-more" data-action="read-match-report" data-year="${tour.year}">
+        Read full report
+        <span aria-hidden="true">→</span>
+      </button>
+    </section>
+  `;
+}
+
+function MatchReportPage(tour) {
+  const report = state.matchReportsByYear[tour.year];
+  const text = getMatchReportText(report);
+
+  return `
+    <section class="overview-feature-screen match-report-screen">
+      <div class="overview-feature-topbar">
+        <button class="overview-feature-back" data-action="back-match-report" aria-label="Back to tour">${icon("back")}</button>
+      </div>
+      <span class="eyebrow">${tour.year}</span>
+      <h1>Match Report</h1>
+      <article class="match-report-full">
+        ${text ? MatchReportParagraphs(text) : `<p>No match report found for this tour.</p>`}
+      </article>
+    </section>
+  `;
+}
+
 function TourOverview(tour) {
   const resultRows = state.tourResultsByYear[tour.year] || [];
   const totals = teamPointsForRows(resultRows);
@@ -1447,6 +1538,7 @@ function TourOverview(tour) {
 
   return `
     ${showScorecard ? BillSplitterScorecard(totals.crocs, totals.foz) : ""}
+    ${MatchReportTeaser(tour)}
     ${TourFilm(tour)}
     <h3 class="section-title">Tour Photos</h3>
     ${TourPhotos(tour)}
@@ -2153,6 +2245,9 @@ function TourDetail({ forcedTour = null, thisTourMode = false } = {}) {
   const tour = foundTour || tours[0];
   if (thisTourMode && state.detailSubTab === "Overview" && state.thisTourOverviewPanel) {
     return ThisTourOverviewFeature();
+  }
+  if (state.detailSubTab === "Overview" && Number(state.matchReportOpenYear) === Number(tour.year)) {
+    return MatchReportPage(tour);
   }
 
   const detailTabs = ["Overview", "Results", "Teams", "Profiles", "Roles", "Brochures"];
@@ -3306,6 +3401,7 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.tab = target.dataset.tab;
     state.detailTour = null;
+    state.matchReportOpenYear = null;
     if (state.tab === "this-tour") {
       state.detailSubTab = "Overview";
       state.thisTourOverviewPanel = "";
@@ -3335,6 +3431,7 @@ app.addEventListener("click", (event) => {
   }
   if (action === "tour-detail") {
     state.restoredScrollTop = 0;
+    state.matchReportOpenYear = null;
     const tour = tours.find((item) => item.id === target.dataset.tour);
     if (tour?.status === "Upcoming") {
       state.tab = "this-tour";
@@ -3347,6 +3444,7 @@ app.addEventListener("click", (event) => {
       loadTourProfiles(tour?.supabaseId);
       if (tour?.status === "Completed") loadTourResults(tour.year);
       loadTourPhotos(tour?.year);
+      loadMatchReport(tour?.year);
     }
   }
   if (action === "home-view-tour") {
@@ -3368,17 +3466,32 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.detailTour = null;
     state.detailSubTab = "Overview";
+    state.matchReportOpenYear = null;
   }
   if (action === "detail-subtab") {
     state.restoredScrollTop = 0;
     state.detailSubTab = target.dataset.tab;
     state.thisTourOverviewPanel = "";
+    state.matchReportOpenYear = null;
     const tour = state.tab === "this-tour" ? tours[0] : tours.find((item) => item.id === state.detailTour);
     if (state.detailSubTab === "Overview" && state.tab !== "this-tour" && tour?.status === "Completed") loadTourResults(tour?.year);
-    if (state.detailSubTab === "Overview" && state.tab !== "this-tour") loadTourPhotos(tour?.year);
+    if (state.detailSubTab === "Overview" && state.tab !== "this-tour") {
+      loadTourPhotos(tour?.year);
+      loadMatchReport(tour?.year);
+    }
     if (state.detailSubTab === "Results") loadTourResults(tour?.year);
     if (["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) loadTourProfiles(tour?.supabaseId);
     if (state.detailSubTab === "Brochures") loadTourBrochures(tour?.year);
+  }
+  if (action === "read-match-report") {
+    const year = Number(target.dataset.year);
+    state.restoredScrollTop = 0;
+    state.matchReportOpenYear = year;
+    loadMatchReport(year);
+  }
+  if (action === "back-match-report") {
+    state.restoredScrollTop = 0;
+    state.matchReportOpenYear = null;
   }
   if (action === "overview-panel") {
     state.restoredScrollTop = 0;
