@@ -229,6 +229,7 @@ function mapSupabaseTour(row, index) {
 
 async function supabaseFetch(path) {
   const response = await fetch(`${SUPABASE_REST_URL}/${path}`, {
+    cache: "no-store",
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
       Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
@@ -505,7 +506,7 @@ function tourPageCacheKey(year, pageKey) {
 function normaliseTourPageContent(content) {
   return Array.isArray(content)
     ? content
-        .filter((block) => block && ["heading", "text", "bullet"].includes(block.type))
+        .filter((block) => block && ["heading", "subheading", "subheading3", "text", "bullet"].includes(block.type))
         .map((block) => ({ type: block.type, text: String(block.text || "") }))
     : [];
 }
@@ -1103,9 +1104,14 @@ function HandicapGraph(history = []) {
   const padX = 16;
   const padY = 16;
   const values = rows.map((row) => row.handicap);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const min = Math.min(0, ...values);
+  const max = Math.max(0, ...values);
   const range = max - min || 1;
+  const ticks = max === min ? [max] : [max, (max + min) / 2, min];
+  const tickLabels = ticks.map((tick) => {
+    const rounded = Math.round(tick * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/\.0$/, "");
+  });
   const points = rows.map((row, index) => {
     const x = rows.length === 1 ? width / 2 : padX + (index / (rows.length - 1)) * (width - padX * 2);
     const y = padY + ((max - row.handicap) / range) * (height - padY * 2);
@@ -1123,6 +1129,10 @@ function HandicapGraph(history = []) {
       <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Handicap history">
         <line x1="${padX}" y1="${padY}" x2="${padX}" y2="${height - padY}" />
         <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" />
+        ${ticks.map((tick, index) => {
+          const y = padY + ((max - tick) / range) * (height - padY * 2);
+          return `<text class="handicap-y-label" x="${padX - 7}" y="${(y + 3).toFixed(1)}" text-anchor="end">${escapeHtml(tickLabels[index])}</text>`;
+        }).join("")}
         <polyline points="${polyline}" />
         ${points.map((point) => `
           <g>
@@ -1137,12 +1147,7 @@ function HandicapGraph(history = []) {
 
 function PlayerCard(player) {
   const nickname = String(player.nick || "").trim();
-  const firstName = player.name.split(" ")[0];
-  const about = String(player.about || "").trim();
   const role = String(player.role || "").trim();
-  const aboutText = about && about !== "[PLACEHOLDER]"
-    ? formatProfileBody(about)
-    : `<p>A key member of the Tourists, ${escapeHtml(firstName)} brings competitive spirit, big hitting and even bigger enthusiasm to every tour.</p>`;
   return `
     <article class="player-card">
       <div class="player-identity">
@@ -1163,9 +1168,9 @@ function PlayerCard(player) {
         <span><span class="player-stat-value">${icon("star")}<b>${player.tourWins}</b></span><small>${Number(player.tourWins) === 1 ? "Tour Win" : "Tour Wins"}</small></span>
         <span><span class="player-stat-value">${icon("ball")}<b>${player.individualWins}</b></span><small>Total Points</small></span>
       </div>
-      <div class="profile-section profile-panel">
-        <h3>${icon("user")}About ${escapeHtml(firstName)}</h3>
-        ${aboutText}
+      <div class="profile-detail-stats">
+        <span><span class="player-stat-value">${icon("flag")}<b>${escapeHtml(String(player.debutTour || "N/A"))}</b></span><small>Debut Tour</small></span>
+        <span><span class="player-stat-value">${icon("chart")}<b>${escapeHtml(String(player.winPercent || "N/A"))}</b></span><small>Win %</small></span>
       </div>
       <div class="profile-panel handicap-history-panel">
         <h3>${icon("flag")}Handicap</h3>
@@ -1473,9 +1478,19 @@ function currentTourPageYear() {
   return Number(state.thisTourOverviewYear || tours[0]?.year);
 }
 
+function formatTourPageText(text = "") {
+  const escaped = escapeHtml(text || "");
+  return escaped.replace(
+    /(https?:\/\/[^\s<]+)/g,
+    (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
+  );
+}
+
 function TourPageContentBlock(block) {
-  const text = escapeHtml(block.text || "");
+  const text = formatTourPageText(block.text || "");
   if (block.type === "heading") return `<h2 data-type="heading">${text || "<br>"}</h2>`;
+  if (block.type === "subheading") return `<h3 data-type="subheading">${text || "<br>"}</h3>`;
+  if (block.type === "subheading3") return `<h4 data-type="subheading3">${text || "<br>"}</h4>`;
   if (block.type === "bullet") return `<p class="cms-bullet-line" data-type="bullet">${text || "<br>"}</p>`;
   return `<p data-type="text">${text || "<br>"}</p>`;
 }
@@ -1493,8 +1508,10 @@ function TourPageEditorBox(blocks) {
   const draft = getTourPageDraft(cacheKey, blocks);
   return `
     <div class="cms-toolbar" aria-label="Editor toolbar">
-      <button data-action="format-tour-page-line" data-type="heading">Heading</button>
+      <button data-action="format-tour-page-line" data-type="heading">H1</button>
+      <button data-action="format-tour-page-line" data-type="subheading">H2</button>
       <button data-action="format-tour-page-line" data-type="text">Text</button>
+      <button data-action="format-tour-page-line" data-type="subheading3">Bold</button>
       <button data-action="format-tour-page-line" data-type="bullet">Bullet</button>
     </div>
     <div class="cms-content-box cms-content-editor" contenteditable="plaintext-only" spellcheck="true" role="textbox" aria-multiline="true" data-placeholder="Type freely here...">${escapeHtml(draft.text)}</div>
@@ -1508,6 +1525,8 @@ function getTourPageEditor() {
 function blockToDraftText(block) {
   const text = String(block.text || "").trim();
   if (block.type === "heading") return text ? `# ${text}` : "# ";
+  if (block.type === "subheading") return text ? `## ${text}` : "## ";
+  if (block.type === "subheading3") return text ? `* ${text}` : "* ";
   if (block.type === "bullet") return text ? `- ${text}` : "- ";
   return text;
 }
@@ -1545,6 +1564,9 @@ function draftToTourPageBlocks(draft) {
   return paragraphs
     .map((paragraph) => {
       const text = paragraph.trim();
+      if (text.startsWith("* ")) return { type: "subheading3", text: text.replace(/^\*\s+/, "").trim() };
+      if (text.startsWith("### ")) return { type: "subheading3", text: text.replace(/^###\s+/, "").trim() };
+      if (text.startsWith("## ")) return { type: "subheading", text: text.replace(/^##\s+/, "").trim() };
       if (text.startsWith("# ")) return { type: "heading", text: text.replace(/^#\s+/, "").trim() };
       if (text.startsWith("- ") || text.startsWith("• ")) return { type: "bullet", text: text.replace(/^[-•]\s+/, "").trim() };
       return { type: "text", text };
@@ -1621,8 +1643,13 @@ function applyTourPageLineFormat(type) {
   const paragraphIndex = currentDraftParagraphIndex(editor.innerText, selectionStart);
   const paragraphStart = starts[paragraphIndex] || 0;
   const paragraph = paragraphs[paragraphIndex] || "";
-  const cleanText = paragraph.trim().replace(/^#\s+/, "").replace(/^[-•]\s+/, "");
-  const formattedParagraph = type === "heading" ? `# ${cleanText}` : type === "bullet" ? `- ${cleanText}` : cleanText;
+  const cleanText = paragraph.trim().replace(/^#{1,3}\s+/, "").replace(/^[-•*]\s+/, "");
+  const formattedParagraph =
+    type === "heading" ? `# ${cleanText}` :
+    type === "subheading" ? `## ${cleanText}` :
+    type === "subheading3" ? `* ${cleanText}` :
+    type === "bullet" ? `- ${cleanText}` :
+    cleanText;
   const before = editor.innerText.slice(0, paragraphStart);
   const after = editor.innerText.slice(paragraphStart + paragraph.length);
   draft.text = `${before}${formattedParagraph}${after}`;
@@ -1676,7 +1703,12 @@ function ThisTourOverviewFeature() {
     <section class="overview-feature-screen ${isEditing ? "editing" : ""}">
       <div class="overview-feature-topbar">
         <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
-        ${!isLoading ? `<button class="cms-edit-btn" data-action="${isEditing ? "save-tour-page" : "edit-tour-page"}">${isSaving ? "Saving..." : isEditing ? "Save" : "Edit"}</button>` : ""}
+        ${!isLoading ? `
+          <div class="cms-page-actions">
+            ${isEditing ? `<button class="cms-edit-btn secondary" data-action="discard-tour-page">Discard</button>` : ""}
+            <button class="cms-edit-btn" data-action="${isEditing ? "save-tour-page" : "edit-tour-page"}">${isSaving ? "Saving..." : isEditing ? "Save" : "Edit"}</button>
+          </div>
+        ` : ""}
       </div>
       <div class="cms-page-head">
         <span class="eyebrow">${year}</span>
@@ -2622,6 +2654,74 @@ function mostTourStars(rows = [], activeOnly = true) {
   };
 }
 
+function currentStatsTour() {
+  return tours.find((tour) => Number(tour.year) === currentTourPageYear()) || tours.find((tour) => tour.status === "Upcoming") || tours[0];
+}
+
+function formatHandicapChange(value) {
+  const rounded = Math.round(Number(value) * 10) / 10;
+  if (!Number.isFinite(rounded)) return "";
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/\.0$/, "");
+}
+
+function mostImprovedHandicap(activeOnly = true) {
+  const currentTour = currentStatsTour();
+  const currentYear = Number(currentTour?.year);
+  const currentTourId = Number(currentTour?.supabaseId);
+  const playerById = allPlayers.reduce((playersById, player) => {
+    playersById[Number(player.id)] = player;
+    return playersById;
+  }, {});
+  const tourById = tours.reduce((toursById, tour) => {
+    toursById[Number(tour.supabaseId)] = tour;
+    return toursById;
+  }, {});
+  const rows = (state.touristHandicapRows || [])
+    .map((row) => ({
+      ...row,
+      handicap: Number(row.handicap),
+      playerId: Number(row.player_id),
+      tourId: Number(row.tour_id),
+      year: Number(tourById[Number(row.tour_id)]?.year),
+    }))
+    .filter((row) => Number.isFinite(row.handicap) && Number.isFinite(row.playerId) && Number.isFinite(row.year));
+
+  if (!Number.isFinite(currentYear)) return { name: "TBC", value: "", detail: "" };
+
+  const currentRows = rows.filter((row) =>
+    Number.isFinite(currentTourId) ? row.tourId === currentTourId : row.year === currentYear
+  );
+
+  if (!currentRows.length) return { name: "TBC", value: "", detail: "" };
+
+  const improvements = currentRows
+    .filter((row) => !activeOnly || playerById[row.playerId]?.is_active !== false)
+    .map((currentRow) => {
+      const previousRow = rows
+        .filter((row) => row.playerId === currentRow.playerId && row.year < currentYear)
+        .sort((a, b) => b.year - a.year)[0];
+
+      return {
+        playerName: playerById[currentRow.playerId]?.player_name || "N/A",
+        currentHandicap: currentRow.handicap,
+        previousHandicap: previousRow?.handicap,
+        drop: Number(previousRow?.handicap) - currentRow.handicap,
+      };
+    })
+    .filter((record) => Number.isFinite(record.drop) && record.drop > 0);
+
+  const leaders = leadersBy(improvements, (record) => record.drop, (a, b) => a.playerName.localeCompare(b.playerName));
+  const leader = leaders[0];
+
+  if (!leader) return { name: "TBC", value: "", detail: "" };
+
+  return {
+    name: namesForLeaders(leaders),
+    value: `-${formatHandicapChange(leader.drop)}`,
+    detail: "handicap drop",
+  };
+}
+
 function StatsOverview() {
   const rows = state.statsOverviewRows || [];
   const stats = buildOverviewStats(rows, state.statsActiveOnly);
@@ -2629,6 +2729,7 @@ function StatsOverview() {
   const highestFourball = percentLeaderDisplay(stats.highestFourballLeaders, stats.highestFourball, "fourballMatches", "fourballWins");
   const highestSingles = percentLeaderDisplay(stats.highestSinglesLeaders, stats.highestSingles, "singlesMatches", "singlesWins");
   const tourStars = mostTourStars(rows, state.statsActiveOnly);
+  const mostImproved = mostImprovedHandicap(state.statsActiveOnly);
 
   if (state.statsOverviewLoading) {
     return Card(`<p class="empty-state">Loading overview stats...</p>`);
@@ -2654,7 +2755,7 @@ function StatsOverview() {
       ${LeaderStat("Highest Singles Win %", highestSingles.name, highestSingles.value, highestSingles.detail)}
       ${LeaderStat("Most Points", namesForLeaders(stats.mostPointsLeaders), formatTeamPoints(stats.mostPoints?.points || 0), `${stats.mostPoints?.wins || 0} wins`)}
       ${LeaderStat("Most Matches Played", namesForLeaders(stats.mostMatchesLeaders), String(stats.mostMatches?.matches || 0), "matches")}
-      ${LeaderStat("Total Nudgers Matches Played", String(stats.totalMatches), "")}
+      ${LeaderStat("Most Improved", mostImproved.name, mostImproved.value, mostImproved.detail)}
     </div>
     ${OverviewLeaderboard(stats.records)}
   `;
@@ -2848,6 +2949,8 @@ function buildTouristPlayers() {
       about: player.about || "[PLACEHOLDER]",
       role: formatTourRole(null),
       handicapHistory: [],
+      debutTour: "N/A",
+      winPercent: "N/A",
       strengths: player.strengths?.length ? player.strengths : ["[PLACEHOLDER]"],
       weaknesses: player.weaknesses?.length ? player.weaknesses : ["[PLACEHOLDER]"],
     }));
@@ -2877,6 +2980,9 @@ function buildTouristPlayers() {
         }))
         .filter((row) => row.year);
       const record = recordsByName[player.player_name] || emptyPlayerRecord(player.player_name);
+      const tourYears = playerTourYears(player.player_name, profileRows);
+      const debutTour = tourYears.length ? Math.min(...tourYears) : "N/A";
+      const winPercent = record.matches ? `${percentage(record.wins, record.matches)}%` : "N/A";
 
       return {
         id: player.id,
@@ -2885,11 +2991,13 @@ function buildTouristPlayers() {
         isActive: player.is_active !== false,
         handicap: formatHandicap(latestHandicap?.handicap),
         role: formatTourRole(tour2026Profile?.tour_role, 2026),
-        tours: playerTourYears(player.player_name, profileRows).length || "[PLACEHOLDER]",
+        tours: tourYears.length || "[PLACEHOLDER]",
         tourWins: formatTeamPoints(playerTourWins(player.player_name, profileRows)),
         individualWins: record.wins || 0,
         about: latestProfile?.profile_body || "[PLACEHOLDER]",
         handicapHistory,
+        debutTour,
+        winPercent,
         strengths: ["[PLACEHOLDER]"],
         weaknesses: ["[PLACEHOLDER]"],
       };
@@ -3254,6 +3362,14 @@ app.addEventListener("click", (event) => {
     const cacheKey = tourPageCacheKey(year, pageKey);
     getTourPageDraft(cacheKey, normaliseTourPageContent(state.tourPagesByKey[cacheKey]?.content));
     state.tourPageEditingKey = cacheKey;
+  }
+  if (action === "discard-tour-page") {
+    const year = currentTourPageYear();
+    const pageKey = state.thisTourOverviewPanel;
+    const cacheKey = tourPageCacheKey(year, pageKey);
+    delete state.tourPageDrafts[cacheKey];
+    state.tourPageEditingKey = null;
+    state.tourPageSavedKey = null;
   }
   if (action === "format-tour-page-line") {
     applyTourPageLineFormat(target.dataset.type);
