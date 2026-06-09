@@ -142,12 +142,39 @@ svg {
 }
 
 .home-logo {
+  position: relative;
   display: grid;
   justify-items: center;
   gap: 10px;
   padding: 2px 0 14px;
   text-align: center;
   text-transform: uppercase;
+}
+
+.home-refresh-btn {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  background:
+    linear-gradient(145deg, rgba(208, 173, 103, .18), rgba(248, 242, 223, .04)),
+    rgba(8, 37, 27, .86);
+  border: 1px solid rgba(208, 173, 103, .54);
+  border-radius: 999px;
+  box-shadow: 0 10px 22px rgba(1, 9, 7, .34), inset 0 1px 0 rgba(248, 242, 223, .08);
+  color: var(--gold-soft);
+}
+
+.home-refresh-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.home-refresh-btn:active {
+  transform: translateY(1px);
 }
 
 .home-logo p {

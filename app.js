@@ -956,6 +956,10 @@ function UpdateAvailableBanner() {
   `;
 }
 
+function HomeRefreshButton() {
+  return `<button class="home-refresh-btn" data-action="refresh-app-update" type="button" aria-label="Refresh app">${icon("refresh")}</button>`;
+}
+
 function Header(title = "", detail = false) {
   if (!title && !detail) {
     return `<header class="app-header app-header-blank" aria-hidden="true"></header>`;
@@ -1202,7 +1206,7 @@ function Home() {
   if (!hasLoadedSupabase) {
     return `
       ${Header()}
-      <section class="home-logo">${Logo()}${UpdateAvailableBanner()}<p>Welcome back, Nudger 👋</p></section>
+      <section class="home-logo">${HomeRefreshButton()}${Logo()}<p>Welcome back, Nudger 👋</p></section>
       ${Card(`
         <span class="eyebrow">Next Tour</span>
         <div class="loading-card">
@@ -1224,8 +1228,8 @@ function Home() {
   return `
     ${Header()}
     <section class="home-logo">
+      ${HomeRefreshButton()}
       ${Logo()}
-      ${UpdateAvailableBanner()}
       <p>Welcome back, Nudger 👋</p>
       <div class="home-tour-clock">
         ${daysSincePrevious !== null && previous ? `<span>${daysSincePrevious} days since ${escapeHtml(tourDisplayName(previous))}</span>` : ""}
