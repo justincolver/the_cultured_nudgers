@@ -1075,20 +1075,23 @@ function DetailHeroMeta(tour) {
   `;
 }
 
-function BillSplitterScorecard(crocombePoints = 0, fosterPoints = 0) {
+function BillSplitterScorecard(crocombePoints = 0, fosterPoints = 0, { showAllTimeRecord = false } = {}) {
   return `
-    <section class="tour-wins-card">
-      <div class="tour-wins-score">
-        <div class="tour-wins-team crocs">
-          <strong>Team Crocombe</strong>
-          <b>${formatTeamPoints(crocombePoints)}</b>
-        </div>
-        <div class="tour-wins-trophy" aria-label="Bill Splitter Trophy">
-          <img src="/assets/images/trophies/bill-splitter-trophy-lite.png?v=169" alt="" aria-hidden="true" />
-        </div>
-        <div class="tour-wins-team foz">
-          <strong>Team Foster</strong>
-          <b>${formatTeamPoints(fosterPoints)}</b>
+    <section class="tour-wins-card ${showAllTimeRecord ? "all-time-record" : ""}">
+      ${showAllTimeRecord ? `<div class="all-time-record-ribbon"><span>★</span> All Time Record <span>★</span></div>` : ""}
+      <div class="tour-wins-clip">
+        <div class="tour-wins-score">
+          <div class="tour-wins-team crocs">
+            <strong>Team Crocombe</strong>
+            <b>${formatTeamPoints(crocombePoints)}</b>
+          </div>
+          <div class="tour-wins-trophy" aria-label="Bill Splitter Trophy">
+            <img src="/assets/images/trophies/bill-splitter-trophy-lite.png?v=169" alt="" aria-hidden="true" />
+          </div>
+          <div class="tour-wins-team foz">
+            <strong>Team Foster</strong>
+            <b>${formatTeamPoints(fosterPoints)}</b>
+          </div>
         </div>
       </div>
     </section>
@@ -1275,7 +1278,7 @@ function Home() {
         ${Avatar(samFoster, "defending-avatar")}
       </div>
     </section>
-    ${BillSplitterScorecard(state.teamTourWins?.crocombe || 0, state.teamTourWins?.foster || 0)}
+    ${BillSplitterScorecard(state.teamTourWins?.crocombe || 0, state.teamTourWins?.foster || 0, { showAllTimeRecord: true })}
   `;
 }
 
