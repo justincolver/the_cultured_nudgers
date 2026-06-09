@@ -1,6 +1,6 @@
 const SUPABASE_REST_URL = "https://dwohuxnsbaupysxtupxs.supabase.co/rest/v1";
 const SUPABASE_STORAGE_URL = "https://dwohuxnsbaupysxtupxs.supabase.co/storage/v1/object/public";
-const SUPABASE_PHOTOS_BUCKET = "Bruges";
+const SUPABASE_PHOTOS_BUCKET = "Photos";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_5HdyIHS4QW98ZMEGk7NDvw_JEROoM2z";
 
 let tours = [
@@ -453,9 +453,10 @@ async function loadTourPhotos(year) {
   render();
 
   try {
-    state.tourPhotosByYear[year] = await supabaseFetch(
+    const rows = await supabaseFetch(
       `photos?select=*&tour_year=eq.${year}&order=is_group_photo.desc&order=uploaded_at.asc`
     );
+    state.tourPhotosByYear[year] = rows.filter((row) => !isBrochureRow(row));
   } catch (error) {
     console.warn(error);
     state.tourPhotosError = "Could not load tour photos.";
@@ -463,6 +464,38 @@ async function loadTourPhotos(year) {
     state.tourPhotosLoadingYear = null;
     render();
   }
+}
+
+async function loadTourBrochures(year) {
+  if (!year || state.tourBrochuresByYear[year] || state.tourBrochuresLoadingYear === year) return;
+
+  state.tourBrochuresLoadingYear = year;
+  state.tourBrochuresError = "";
+  render();
+
+  try {
+    const rows = await supabaseFetch(`photos?select=*&tour_year=eq.${year}&order=uploaded_at.asc`);
+    state.tourBrochuresByYear[year] = rows.filter(isBrochureRow);
+  } catch (error) {
+    console.warn(error);
+    state.tourBrochuresError = "Could not load brochures.";
+  } finally {
+    state.tourBrochuresLoadingYear = null;
+    render();
+  }
+}
+
+function isBrochureRow(row = {}) {
+  const bucket = String(row.bucket_name || "").trim().toLowerCase();
+  const mediaType = String(row.media_type || "").trim().toLowerCase();
+  const filePath = String(row.file_path || "").trim().toLowerCase();
+
+  return (
+    bucket === "brochures" ||
+    bucket === "bruchures" ||
+    mediaType.includes("brochure") ||
+    filePath.endsWith(".pdf")
+  );
 }
 
 function tourPageCacheKey(year, pageKey) {
@@ -772,10 +805,11 @@ async function loadSupabaseData() {
     if (state.statSubTab === "Overview") loadStatsOverview();
     if (state.statSubTab === "Head-to-Head") loadHeadToHeadMatches();
     if (state.statSubTab === "Individual") loadIndividualMatches();
-    if (state.detailTour && ["Overview", "Results"].includes(state.detailSubTab)) {
+    if (state.detailTour && ["Overview", "Results", "Brochures"].includes(state.detailSubTab)) {
       const tour = tours.find((item) => item.id === state.detailTour);
       if (state.detailSubTab === "Overview") loadTourPhotos(tour?.year);
       if (state.detailSubTab === "Results" || tour?.status === "Completed") loadTourResults(tour?.year);
+      if (state.detailSubTab === "Brochures") loadTourBrochures(tour?.year);
     }
     if (state.detailTour && ["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) {
       const tour = tours.find((item) => item.id === state.detailTour);
@@ -783,6 +817,9 @@ async function loadSupabaseData() {
     }
     if (state.tab === "this-tour" && state.detailSubTab === "Results") {
       loadTourResults(tours[0]?.year);
+    }
+    if (state.tab === "this-tour" && state.detailSubTab === "Brochures") {
+      loadTourBrochures(tours[0]?.year);
     }
     if (state.tab === "this-tour" && ["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) {
       loadTourProfiles(tours[0]?.supabaseId);
@@ -846,6 +883,9 @@ let state = {
   tourPhotosByYear: {},
   tourPhotosLoadingYear: null,
   tourPhotosError: "",
+  tourBrochuresByYear: {},
+  tourBrochuresLoadingYear: null,
+  tourBrochuresError: "",
   tourProfilesByTourId: {},
   tourProfilesLoadingTourId: null,
   tourProfilesError: "",
@@ -1044,6 +1084,57 @@ function ActionTile(label, iconName, view) {
   return `<button class="action-tile" data-action="overview-panel" data-view="${view}">${icon(iconName)}<span>${label}</span></button>`;
 }
 
+function HandicapGraph(history = []) {
+  const rows = history
+    .map((row) => ({
+      ...row,
+      handicap: Number(row.handicap),
+      year: Number(row.year),
+    }))
+    .filter((row) => Number.isFinite(row.handicap) && Number.isFinite(row.year))
+    .sort((a, b) => a.year - b.year);
+
+  if (!rows.length) {
+    return `<p class="handicap-empty">No handicap history yet.</p>`;
+  }
+
+  const width = 320;
+  const height = 104;
+  const padX = 16;
+  const padY = 16;
+  const values = rows.map((row) => row.handicap);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const points = rows.map((row, index) => {
+    const x = rows.length === 1 ? width / 2 : padX + (index / (rows.length - 1)) * (width - padX * 2);
+    const y = padY + ((max - row.handicap) / range) * (height - padY * 2);
+    return { ...row, x, y };
+  });
+  const polyline = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  const latest = rows[rows.length - 1];
+
+  return `
+    <div class="handicap-chart">
+      <div class="handicap-chart-meta">
+        <span>Latest</span>
+        <strong>${escapeHtml(formatHandicap(latest.handicap))}</strong>
+      </div>
+      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Handicap history">
+        <line x1="${padX}" y1="${padY}" x2="${padX}" y2="${height - padY}" />
+        <line x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}" />
+        <polyline points="${polyline}" />
+        ${points.map((point) => `
+          <g>
+            <circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="3.2" />
+            <text x="${point.x.toFixed(1)}" y="${height - 3}" text-anchor="middle">${escapeHtml(String(point.year).slice(-2))}</text>
+          </g>
+        `).join("")}
+      </svg>
+    </div>
+  `;
+}
+
 function PlayerCard(player) {
   const nickname = String(player.nick || "").trim();
   const firstName = player.name.split(" ")[0];
@@ -1052,7 +1143,6 @@ function PlayerCard(player) {
   const aboutText = about && about !== "[PLACEHOLDER]"
     ? formatProfileBody(about)
     : `<p>A key member of the Tourists, ${escapeHtml(firstName)} brings competitive spirit, big hitting and even bigger enthusiasm to every tour.</p>`;
-  const listItems = (items = []) => items.map((x) => `<li>${icon("badge")}<span>${escapeHtml(x)}</span></li>`).join("");
   return `
     <article class="player-card">
       <div class="player-identity">
@@ -1077,9 +1167,9 @@ function PlayerCard(player) {
         <h3>${icon("user")}About ${escapeHtml(firstName)}</h3>
         ${aboutText}
       </div>
-      <div class="two-col profile-skill-grid">
-        <div class="profile-panel"><h3>${icon("flag")}Strengths</h3><ul>${listItems(player.strengths)}</ul></div>
-        <div class="profile-panel"><h3>${icon("ball")}Weaknesses</h3><ul>${listItems(player.weaknesses)}</ul></div>
+      <div class="profile-panel handicap-history-panel">
+        <h3>${icon("flag")}Handicap</h3>
+        ${HandicapGraph(player.handicapHistory)}
       </div>
     </article>
   `;
@@ -1175,11 +1265,12 @@ function Tours() {
   return `${PageHero("Tours")}<div class="page-body"><div class="tour-list">${tours.map(TourCard).join("")}</div></div>`;
 }
 
-function photoUrl(filePath = "") {
+function photoUrl(filePath = "", bucketName = SUPABASE_PHOTOS_BUCKET) {
   const path = String(filePath || "").trim();
+  const bucket = String(bucketName || SUPABASE_PHOTOS_BUCKET).trim();
   if (!path) return "";
   if (/^https?:\/\//i.test(path)) return path;
-  return `${SUPABASE_STORAGE_URL}/${SUPABASE_PHOTOS_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+  return `${SUPABASE_STORAGE_URL}/${encodeURIComponent(bucket).replace(/%2F/g, "/")}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
 }
 
 function TourPhotos(tour) {
@@ -1200,7 +1291,7 @@ function TourPhotos(tour) {
   return `
     <div class="highlight-grid tour-photo-grid">
       ${photos.map((photo) => {
-        const src = photoUrl(photo.file_path);
+        const src = photoUrl(photo.file_path, photo.bucket_name);
         const caption = photo.caption || (photo.is_group_photo ? "Group Photo" : "Tour Photo");
         return `
           <figure>
@@ -1215,6 +1306,90 @@ function TourPhotos(tour) {
   `;
 }
 
+function TourBrochures(tour) {
+  const brochures = state.tourBrochuresByYear[tour.year] || [];
+
+  if (state.tourBrochuresLoadingYear === tour.year) {
+    return Card(`<p class="empty-state">Loading brochures...</p>`);
+  }
+
+  if (state.tourBrochuresError) {
+    return Card(`<p class="empty-state">${escapeHtml(state.tourBrochuresError)}</p>`);
+  }
+
+  if (!brochures.length) {
+    return Card(`<p class="empty-state">No brochures found for this tour.</p>`);
+  }
+
+  return `
+    <div class="brochure-list">
+      ${brochures.map((brochure) => {
+        const href = photoUrl(brochure.file_path, brochure.bucket_name);
+        const title = brochure.caption || brochure.file_path || "Tour Brochure";
+        return `
+          <a class="brochure-card" href="${href}" target="_blank" rel="noopener">
+            <span>${escapeHtml(title)}</span>
+            <b>Open</b>
+          </a>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+const tourFilmEmbedsByYear = {
+  2016: {
+    src: "https://player.vimeo.com/video/157360184?badge=0&autopause=0&player_id=0&app_id=58479",
+    title: "Portugal 2016",
+  },
+  2017: {
+    src: "https://player.vimeo.com/video/207798826?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479",
+    title: "Portugal 2017",
+  },
+  2018: {
+    src: "https://player.vimeo.com/video/260470790?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479",
+    title: "Portugal 2018 Film",
+  },
+  2019: {
+    src: "https://player.vimeo.com/video/322430601?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479",
+    title: "Portugal 2019 Film",
+  },
+  2021: {
+    src: "https://player.vimeo.com/video/1108806725?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479",
+    title: "Nudgers 2021 - 2023 raw footage",
+  },
+  2022: {
+    src: "https://player.vimeo.com/video/1108806725?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479",
+    title: "Nudgers 2021 - 2023 raw footage",
+  },
+  2023: {
+    src: "https://player.vimeo.com/video/1108806725?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479",
+    title: "Nudgers 2021 - 2023 raw footage",
+  },
+  2024: {
+    src: "https://player.vimeo.com/video/1109696115?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479",
+    title: "Nudgers 2024 Highlights - Le Touquet",
+  },
+};
+
+function TourFilm(tour) {
+  const film = tourFilmEmbedsByYear[Number(tour.year)];
+  if (!film) return "";
+
+  return `
+    <h3 class="section-title">Tour Films</h3>
+    <div class="tour-film-frame">
+      <iframe
+        src="${escapeHtml(film.src)}"
+        frameborder="0"
+        allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        title="${escapeHtml(film.title)}"
+      ></iframe>
+    </div>
+  `;
+}
+
 function TourOverview(tour) {
   const resultRows = state.tourResultsByYear[tour.year] || [];
   const totals = teamPointsForRows(resultRows);
@@ -1222,6 +1397,7 @@ function TourOverview(tour) {
 
   return `
     ${showScorecard ? BillSplitterScorecard(totals.crocs, totals.foz) : ""}
+    ${TourFilm(tour)}
     <h3 class="section-title">Tour Photos</h3>
     ${TourPhotos(tour)}
   `;
@@ -1815,13 +1991,20 @@ function TeamPlayer(row, teamName = "") {
   const player = getPlayerById(row.player_id);
   const playerName = player?.player_name || `Player ${row.player_id}`;
   const firstName = playerName.split(" ")[0];
-  const teamClass = teamName === "Crocs" ? "crocs" : teamName === "Foz" ? "foz" : "";
+  const teamClass = teamClassForName(teamName);
   return `
     <button class="team-player" data-action="player" data-player-id="${row.player_id}" data-return="tour">
       ${Avatar(player, `team-avatar ${teamClass}`.trim())}
       <strong>${escapeHtml(firstName)}</strong>
     </button>
   `;
+}
+
+function teamClassForName(teamName = "") {
+  const name = String(teamName).trim().toLowerCase();
+  if (name === "croc" || name === "crocs") return "crocs";
+  if (name === "foz") return "foz";
+  return "";
 }
 
 function TourTeams(tour) {
@@ -1855,8 +2038,11 @@ function TourTeams(tour) {
         if (teamA === "Foz") return -1;
         if (teamB === "Foz") return 1;
         return teamA.localeCompare(teamB);
-      }).map(([teamName, playersForTeam]) => `
-        <section class="team-card">
+      }).map(([teamName, playersForTeam]) => {
+        const teamClass = teamClassForName(teamName);
+
+        return `
+        <section class="team-card${teamClass ? ` ${teamClass}` : ""}">
           <div class="team-head">
             <div>
               <h3>${escapeHtml(teamName)}</h3>
@@ -1866,7 +2052,8 @@ function TourTeams(tour) {
             ${playersForTeam.map((playerRow) => TeamPlayer(playerRow, teamName)).join("")}
           </div>
         </section>
-      `).join("")}
+      `;
+      }).join("")}
     </div>
   `;
 }
@@ -1891,14 +2078,15 @@ function TourDetail({ forcedTour = null, thisTourMode = false } = {}) {
     return ThisTourOverviewFeature();
   }
 
-  const detailTabs = ["Overview", "Results", "Teams", "Profiles", "Roles", "Awards", "Stats"];
+  const detailTabs = ["Overview", "Results", "Teams", "Profiles", "Roles", "Brochures"];
   const detailBody = `
     ${state.detailSubTab === "Overview" ? (thisTourMode ? ThisTourOverview() : TourOverview(tour)) : ""}
     ${state.detailSubTab === "Results" ? TourResults(tour) : ""}
     ${state.detailSubTab === "Teams" ? TourTeams(tour) : ""}
     ${state.detailSubTab === "Profiles" ? TourProfiles(tour) : ""}
     ${state.detailSubTab === "Roles" ? TourRoles(tour) : ""}
-    ${!["Overview", "Results", "Teams", "Profiles", "Roles"].includes(state.detailSubTab) ? Card(`<p class="empty-state">${state.detailSubTab} coming soon.</p>`) : ""}
+    ${state.detailSubTab === "Brochures" ? TourBrochures(tour) : ""}
+    ${!["Overview", "Results", "Teams", "Profiles", "Roles", "Brochures"].includes(state.detailSubTab) ? Card(`<p class="empty-state">${state.detailSubTab} coming soon.</p>`) : ""}
   `;
 
   return `
@@ -2659,6 +2847,7 @@ function buildTouristPlayers() {
       individualWins: player.wins ?? "[PLACEHOLDER]",
       about: player.about || "[PLACEHOLDER]",
       role: formatTourRole(null),
+      handicapHistory: [],
       strengths: player.strengths?.length ? player.strengths : ["[PLACEHOLDER]"],
       weaknesses: player.weaknesses?.length ? player.weaknesses : ["[PLACEHOLDER]"],
     }));
@@ -2681,6 +2870,12 @@ function buildTouristPlayers() {
       const latestProfile = latestByTourId(profileRows);
       const tour2026Profile = profileForTourYear(profileRows, 2026);
       const latestHandicap = latestByTourId(handicapRows);
+      const handicapHistory = handicapRows
+        .map((row) => ({
+          ...row,
+          year: tours.find((tour) => Number(tour.supabaseId) === Number(row.tour_id))?.year,
+        }))
+        .filter((row) => row.year);
       const record = recordsByName[player.player_name] || emptyPlayerRecord(player.player_name);
 
       return {
@@ -2694,6 +2889,7 @@ function buildTouristPlayers() {
         tourWins: formatTeamPoints(playerTourWins(player.player_name, profileRows)),
         individualWins: record.wins || 0,
         about: latestProfile?.profile_body || "[PLACEHOLDER]",
+        handicapHistory,
         strengths: ["[PLACEHOLDER]"],
         weaknesses: ["[PLACEHOLDER]"],
       };
@@ -2717,6 +2913,10 @@ function TouristRoster(playersList, selectedIndex, showActiveSelection = false) 
 }
 
 function TouristProfilePage(player) {
+  if (!player) {
+    return Card(`<p class="empty-state">Loading tourist profile...</p>`);
+  }
+
   return `
     <div class="tourist-profile-page">
       <button class="tourist-back" data-action="tourist-back" aria-label="Back to Tourists">${icon("back")}</button>
@@ -2728,6 +2928,7 @@ function TouristProfilePage(player) {
 function Profiles() {
   const touristPlayers = buildTouristPlayers();
   const selectedIndex = Math.min(state.playerIndex, Math.max(touristPlayers.length - 1, 0));
+  const selectedPlayer = touristPlayers[selectedIndex];
 
   if (state.touristDataLoading) {
     return `
@@ -2748,7 +2949,7 @@ function Profiles() {
     <div class="page-body">
       ${
         state.touristProfileOpen
-          ? TouristProfilePage(touristPlayers[selectedIndex])
+          ? TouristProfilePage(selectedPlayer)
           : TouristRoster(touristPlayers, selectedIndex)
       }
     </div>
@@ -2820,6 +3021,7 @@ function routeState() {
     thisTourOverviewYear: state.thisTourOverviewYear,
     statSubTab: state.statSubTab,
     playerIndex: state.playerIndex,
+    touristProfileOpen: state.touristProfileOpen,
     selectedPlayerAId: state.selectedPlayerAId,
     selectedPlayerBId: state.selectedPlayerBId,
     selectedIndividualPlayerId: state.selectedIndividualPlayerId,
@@ -2839,6 +3041,14 @@ function persistRoute(replace = true) {
   else params.delete("tour");
   if (route.detailSubTab) params.set("detail", route.detailSubTab);
   if (route.statSubTab) params.set("stat", route.statSubTab);
+  if (route.tab === "profiles") {
+    params.set("player", route.playerIndex);
+    if (route.touristProfileOpen) params.set("profile", "1");
+    else params.delete("profile");
+  } else {
+    params.delete("player");
+    params.delete("profile");
+  }
   if (route.selectedPlayerAId) params.set("pa", route.selectedPlayerAId);
   if (route.selectedPlayerBId) params.set("pb", route.selectedPlayerBId);
   if (route.selectedIndividualPlayerId) params.set("pi", route.selectedIndividualPlayerId);
@@ -2886,10 +3096,15 @@ function restoreRoute() {
     state.thisTourOverviewYear = Number(params.get("year") || saved.thisTourOverviewYear || state.thisTourOverviewYear) || null;
   }
   if (state.detailSubTab === "Gallery") state.detailSubTab = "Teams";
+  if (state.detailSubTab === "Awards") state.detailSubTab = "Brochures";
   if (requestedTab === "this-tour" && !params.has("detail")) state.detailSubTab = "Overview";
   state.statSubTab = params.get("stat") || saved.statSubTab || state.statSubTab;
   if (!["Overview", "Head-to-Head", "Individual"].includes(state.statSubTab)) state.statSubTab = "Overview";
   state.playerIndex = Number(params.get("player") || saved.playerIndex || state.playerIndex);
+  state.touristProfileOpen = params.has("profile")
+    ? params.get("profile") === "1"
+    : !requestedTab && state.tab === "profiles" && saved.touristProfileOpen === true;
+  if (state.tab !== "profiles") state.touristProfileOpen = false;
   state.selectedPlayerAId = Number(params.get("pa") || saved.selectedPlayerAId || state.selectedPlayerAId) || null;
   state.selectedPlayerBId = Number(params.get("pb") || saved.selectedPlayerBId || state.selectedPlayerBId) || null;
   state.selectedIndividualPlayerId = Number(params.get("pi") || saved.selectedIndividualPlayerId || state.selectedIndividualPlayerId) || null;
@@ -3019,6 +3234,7 @@ app.addEventListener("click", (event) => {
     if (state.detailSubTab === "Overview" && state.tab !== "this-tour") loadTourPhotos(tour?.year);
     if (state.detailSubTab === "Results") loadTourResults(tour?.year);
     if (["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) loadTourProfiles(tour?.supabaseId);
+    if (state.detailSubTab === "Brochures") loadTourBrochures(tour?.year);
   }
   if (action === "overview-panel") {
     state.restoredScrollTop = 0;
@@ -3068,6 +3284,8 @@ app.addEventListener("click", (event) => {
     state.statsActiveOnly = target.dataset.active !== "0";
   }
   if (action === "overview-sort") {
+    const content = document.querySelector(".content");
+    state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
     state.statsOverviewSortKey = target.dataset.sort || "points";
   }
   if (action === "player") {
