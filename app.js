@@ -840,7 +840,7 @@ const navItems = [
   ["tours", "Tours", "badge"],
   ["this-tour", "This Tour", "calendar"],
   ["stats", "Stats", "chart"],
-  ["more", "More", "more"],
+  ["profiles", "Tourists", "people"],
 ];
 
 let state = {
@@ -900,7 +900,7 @@ let state = {
   tourPageError: "",
   tourPageEditingKey: null,
   tourPageDrafts: {},
-  moreMenuOpen: false,
+  homeMenuOpen: false,
   restoredScrollTop: 0,
   updateAvailable: false,
 };
@@ -917,7 +917,8 @@ function icon(name) {
     chart: '<path d="M5 19V9M12 19V5M19 19v-8"/>',
     pin: '<path d="M12 21s7-5.3 7-11a7 7 0 0 0-14 0c0 5.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 14.5-4 16 0"/>',
-    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    people: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.5 11.8-3.5 13 0"/><circle cx="17" cy="9" r="2.8"/><path d="M14.5 19c1.1-2.1 5.3-2.1 6.4 0"/>',
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
     bell: '<path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
     back: '<path d="m15 18-6-6 6-6"/>',
     chevron: '<path d="m9 18 6-6-6-6"/>',
@@ -932,6 +933,7 @@ function icon(name) {
     suitcase: '<path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1"/><rect x="5" y="6" width="14" height="15" rx="2"/><path d="M9 6v15M15 6v15"/>',
     swap: '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
     refresh: '<path d="M21 12a9 9 0 0 1-15.4 6.4L3 16"/><path d="M3 21v-5h5"/><path d="M3 12A9 9 0 0 1 18.4 5.6L21 8"/><path d="M21 3v5h-5"/>',
+    logout: '<path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M14 4h4a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-4"/>',
   };
   return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.home}</svg>`;
 }
@@ -958,6 +960,17 @@ function UpdateAvailableBanner() {
 
 function HomeRefreshButton() {
   return `<button class="home-refresh-btn" data-action="refresh-app-update" type="button" aria-label="Refresh app">${icon("refresh")}</button>`;
+}
+
+function HomeMenuButton() {
+  return `
+    <button class="home-menu-btn" data-action="toggle-home-menu" type="button" aria-label="Menu">${icon("menu")}</button>
+    ${state.homeMenuOpen ? `
+      <div class="home-menu">
+        <button data-action="logout" type="button">${icon("logout")}<span>Log Out</span></button>
+      </div>
+    ` : ""}
+  `;
 }
 
 function Header(title = "", detail = false) {
@@ -1071,7 +1084,7 @@ function BillSplitterScorecard(crocombePoints = 0, fosterPoints = 0) {
           <b>${formatTeamPoints(crocombePoints)}</b>
         </div>
         <div class="tour-wins-trophy" aria-label="Bill Splitter Trophy">
-          <img src="/assets/images/trophies/bill-splitter-trophy-lite.png" alt="" aria-hidden="true" />
+          <img src="/assets/images/trophies/bill-splitter-trophy-lite.png?v=169" alt="" aria-hidden="true" />
         </div>
         <div class="tour-wins-team foz">
           <strong>Team Foster</strong>
@@ -1159,7 +1172,7 @@ function HandicapGraph(history = []) {
         ${points.map((point) => `
           <g>
             <circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="3.2" />
-            <text x="${point.x.toFixed(1)}" y="${height - 3}" text-anchor="middle">${escapeHtml(String(point.year).slice(-2))}</text>
+            <text x="${point.x.toFixed(1)}" y="${height - 3}" text-anchor="middle">${escapeHtml(`'${String(point.year).slice(-2)}`)}</text>
           </g>
         `).join("")}
       </svg>
@@ -1206,7 +1219,7 @@ function Home() {
   if (!hasLoadedSupabase) {
     return `
       ${Header()}
-      <section class="home-logo">${HomeRefreshButton()}${Logo()}<p>Welcome back, Nudger 👋</p></section>
+      <section class="home-logo">${HomeMenuButton()}${HomeRefreshButton()}${Logo()}<p>Welcome back, Nudger 👋</p></section>
       ${Card(`
         <span class="eyebrow">Next Tour</span>
         <div class="loading-card">
@@ -1228,6 +1241,7 @@ function Home() {
   return `
     ${Header()}
     <section class="home-logo">
+      ${HomeMenuButton()}
       ${HomeRefreshButton()}
       ${Logo()}
       <p>Welcome back, Nudger 👋</p>
@@ -3094,44 +3108,15 @@ function Profiles() {
   `;
 }
 
-function Media() {
-  return `
-    ${PageHero("Pictures & Media")}
-    <div class="page-body">
-      ${Card(`
-        <div class="media-video">
-          <iframe
-            src="https://player.vimeo.com/video/1109696115?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
-            frameborder="0"
-            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share"
-            referrerpolicy="strict-origin-when-cross-origin"
-            title="Nudgers 2024 Highlights - Le Touquet"
-            allowfullscreen
-          ></iframe>
-        </div>
-      `, "media-card")}
-    </div>
-  `;
-}
-
 function BottomNav() {
   return `
     <nav class="bottom-nav">
       ${navItems.map(([id, label, iconName]) => `
-        <button class="${id === "more" ? (["profiles", "media"].includes(state.tab) || state.moreMenuOpen ? "active" : "") : state.tab === id ? "active" : ""}" data-action="${id === "more" ? "toggle-more" : "tab"}" data-tab="${id}">
+        <button class="${state.tab === id ? "active" : ""}" data-action="tab" data-tab="${id}">
           ${icon(iconName)}
           <span>${label}</span>
         </button>
       `).join("")}
-      ${
-        state.moreMenuOpen
-          ? `<div class="more-menu">
-              <button data-action="more-option" data-tab="media">Pictures & Media</button>
-              <button data-action="more-option" data-tab="profiles">Tourists</button>
-              <button data-action="logout">Logout</button>
-            </div>`
-          : ""
-      }
     </nav>
   `;
 }
@@ -3272,7 +3257,6 @@ function render() {
     "this-tour": ThisTour,
     stats: Stats,
     profiles: Profiles,
-    media: Media,
   };
   if (!screens[state.tab]) state.tab = "home";
   const screenContent = state.tab === "this-tour" ? ThisTour() : state.detailTour ? TourDetail() : screens[state.tab]();
@@ -3299,8 +3283,21 @@ function render() {
 }
 
 app.addEventListener("click", (event) => {
+  const clickedHomeMenu = event.target.closest(".home-menu, .home-menu-btn");
+  let closedHomeMenu = false;
+  if (state.homeMenuOpen && !clickedHomeMenu) {
+    state.homeMenuOpen = false;
+    closedHomeMenu = true;
+  }
+
   const target = event.target.closest("[data-action]");
-  if (!target) return;
+  if (!target) {
+    if (closedHomeMenu) {
+      render();
+      persistRoute();
+    }
+    return;
+  }
   const action = target.dataset.action;
   if (action === "tab") {
     state.restoredScrollTop = 0;
@@ -3311,22 +3308,21 @@ app.addEventListener("click", (event) => {
       state.thisTourOverviewPanel = "";
       loadTourProfiles(tours[0]?.supabaseId);
     }
-    if (state.tab !== "profiles") state.touristProfileOpen = false;
+    if (state.tab === "profiles") {
+      state.touristProfileOpen = false;
+      state.touristProfileReturn = null;
+    } else {
+      state.touristProfileOpen = false;
+    }
     state.openHeadToHeadPicker = null;
     state.openIndividualPicker = false;
-    state.moreMenuOpen = false;
+    state.homeMenuOpen = false;
   }
-  if (action === "toggle-more") {
-    state.moreMenuOpen = !state.moreMenuOpen;
-  }
-  if (action === "more-option") {
-    state.restoredScrollTop = 0;
-    state.tab = target.dataset.tab;
-    state.detailTour = null;
-    state.touristProfileOpen = false;
-    state.moreMenuOpen = false;
-    state.openHeadToHeadPicker = null;
-    state.openIndividualPicker = false;
+  if (action === "toggle-home-menu") {
+    state.homeMenuOpen = !state.homeMenuOpen;
+    render();
+    persistRoute();
+    return;
   }
   if (action === "logout") {
     fetch("/api/auth/logout", { method: "POST" }).finally(() => {
@@ -3462,7 +3458,7 @@ app.addEventListener("click", (event) => {
       };
       state.tab = "profiles";
       state.detailTour = null;
-      state.moreMenuOpen = false;
+      state.homeMenuOpen = false;
     } else {
       state.touristProfileReturn = null;
     }

@@ -151,30 +151,73 @@ svg {
   text-transform: uppercase;
 }
 
-.home-refresh-btn {
+.home-refresh-btn,
+.home-menu-btn {
   position: absolute;
   top: 2px;
-  right: 4px;
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   place-items: center;
-  background:
-    linear-gradient(145deg, rgba(208, 173, 103, .18), rgba(248, 242, 223, .04)),
-    rgba(8, 37, 27, .86);
-  border: 1px solid rgba(208, 173, 103, .54);
-  border-radius: 999px;
-  box-shadow: 0 10px 22px rgba(1, 9, 7, .34), inset 0 1px 0 rgba(248, 242, 223, .08);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   color: var(--gold-soft);
 }
 
-.home-refresh-btn svg {
+.home-refresh-btn {
+  right: 4px;
+}
+
+.home-menu-btn {
+  left: 4px;
+}
+
+.home-refresh-btn svg,
+.home-menu-btn svg {
   width: 20px;
   height: 20px;
 }
 
-.home-refresh-btn:active {
+.home-refresh-btn:active,
+.home-menu-btn:active {
   transform: translateY(1px);
+}
+
+.home-menu {
+  position: absolute;
+  top: 42px;
+  left: 4px;
+  z-index: 35;
+  min-width: 122px;
+  padding: 6px;
+  background:
+    linear-gradient(145deg, rgba(208, 173, 103, .12), rgba(248, 242, 223, .04)),
+    rgba(8, 37, 27, .96);
+  border: 1px solid rgba(208, 173, 103, .38);
+  border-radius: 10px;
+  box-shadow: 0 14px 26px rgba(1, 9, 7, .42);
+}
+
+.home-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  background: transparent;
+  color: var(--cream);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  text-transform: none;
+}
+
+.home-menu button svg {
+  width: 17px;
+  height: 17px;
+  color: var(--gold-soft);
 }
 
 .home-logo p {
@@ -3065,14 +3108,14 @@ svg {
 .profile-detail-stats b {
   display: block;
   color: var(--cream);
-  font-size: 34px;
+  font-size: 31px;
   font-weight: 800;
   line-height: 1;
   margin: 0 0 6px;
 }
 
 .profile-detail-stats b {
-  font-size: 28px;
+  font-size: 26px;
 }
 
 .player-stats small,
