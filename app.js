@@ -1477,13 +1477,50 @@ function getMatchReportText(report) {
   return String(report?.match_report || report?.report || report?.body || "").trim();
 }
 
-function MatchReportParagraphs(text) {
-  const paragraphs = String(text)
-    .split(/\n{2,}|\r?\n/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
+function MatchReportInline(text = "") {
+  return String(text)
+    .split(/(\*[^*\n]+\*)/g)
+    .map((part) => {
+      if (/^\*[^*\n]+\*$/.test(part)) return `<strong>${escapeHtml(part.slice(1, -1))}</strong>`;
+      return escapeHtml(part);
+    })
+    .join("");
+}
 
-  return paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
+function MatchReportParagraphs(text) {
+  const blocks = [];
+  let paragraphLines = [];
+  const flushParagraph = () => {
+    const paragraph = paragraphLines.join(" ").trim();
+    if (paragraph) blocks.push({ type: "paragraph", text: paragraph });
+    paragraphLines = [];
+  };
+
+  String(text).split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushParagraph();
+      return;
+    }
+    if (trimmed.startsWith("## ")) {
+      flushParagraph();
+      blocks.push({ type: "subheading", text: trimmed.replace(/^##\s+/, "").trim() });
+      return;
+    }
+    if (trimmed.startsWith("# ")) {
+      flushParagraph();
+      blocks.push({ type: "heading", text: trimmed.replace(/^#\s+/, "").trim() });
+      return;
+    }
+    paragraphLines.push(trimmed);
+  });
+  flushParagraph();
+
+  return blocks.map((block) => {
+    if (block.type === "heading") return `<h2>${MatchReportInline(block.text)}</h2>`;
+    if (block.type === "subheading") return `<h3>${MatchReportInline(block.text)}</h3>`;
+    return `<p>${MatchReportInline(block.text)}</p>`;
+  }).join("");
 }
 
 function MatchReportTeaser(tour) {

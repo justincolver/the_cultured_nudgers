@@ -1202,7 +1202,18 @@ svg {
   margin-bottom: 5px;
 }
 
+.match-report-screen {
+  display: flex;
+  height: calc(100dvh - 118px - env(safe-area-inset-bottom));
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .match-report-full {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
   padding: 16px;
   background:
     linear-gradient(130deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .015)),
@@ -1210,6 +1221,7 @@ svg {
   border: 1px solid rgba(208, 173, 103, .3);
   border-radius: 14px;
   box-shadow: var(--shadow);
+  -webkit-overflow-scrolling: touch;
 }
 
 .match-report-full p {
@@ -1217,6 +1229,36 @@ svg {
   color: var(--cream);
   font-size: 13px;
   line-height: 1.48;
+}
+
+.match-report-full h2 {
+  margin: 18px 0 10px;
+  color: var(--gold-soft);
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: .02em;
+  line-height: 1.16;
+  text-transform: uppercase;
+}
+
+.match-report-full h3 {
+  margin: 16px 0 8px;
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.match-report-full strong {
+  color: var(--gold-soft);
+  font-weight: 900;
+}
+
+.match-report-full h2:first-child,
+.match-report-full h3:first-child {
+  margin-top: 0;
 }
 
 .match-report-full p:last-child {
