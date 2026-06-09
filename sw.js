@@ -1,4 +1,4 @@
-const CACHE_NAME = "cultured-nudgers-v113";
+const CACHE_NAME = "cultured-nudgers-v124";
 const ASSETS = [
   "./index.html",
   "./login.html",

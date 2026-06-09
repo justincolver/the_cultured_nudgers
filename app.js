@@ -51,36 +51,7 @@ let hasLoadedSupabase = false;
 let allPlayers = [];
 const preloadedImages = new Set();
 
-let players = [
-  {
-    name: "Gaz Elcock",
-    nick: "The Missile",
-    handicap: "12.4",
-    role: "Vice Captain",
-    avatar: "GE",
-    tours: 14,
-    wins: 2,
-    top5: 5,
-    spoons: 3,
-    about: "Long hitter. Short temper. Terrible with directions. Loves a lost ball as much as a birdie.",
-    strengths: ["Driver", "Banter"],
-    weaknesses: ["Short Game", "Course Management"],
-  },
-  {
-    name: "Tom Davies",
-    nick: "The Velvet Hammer",
-    handicap: "8.8",
-    role: "Champion",
-    avatar: "TD",
-    tours: 16,
-    wins: 4,
-    top5: 11,
-    spoons: 0,
-    about: "Looks calm, swings smooth, then quietly removes everyone's lunch money on the back nine.",
-    strengths: ["Putting", "Match Play"],
-    weaknesses: ["Buying Rounds", "Modesty"],
-  },
-];
+let players = [];
 
 function getInitials(name = "") {
   return name
@@ -163,6 +134,14 @@ function flagForDestination(destination = "") {
   return "⛳";
 }
 
+function stripTourFlags(value = "") {
+  return String(value)
+    .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
+    .replace(/\u{1F3F4}/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function formatDateRange(startDate, endDate, year) {
   if (!startDate) return String(year);
 
@@ -233,13 +212,12 @@ function preloadImages(urls = []) {
 
 function mapSupabaseTour(row, index) {
   const name = row.tour_name || row.destination || `Tour ${row.year}`;
-  const flag = flagForDestination(`${row.destination} ${name}`);
   return {
     id: `tour-${row.id}`,
     supabaseId: row.id,
     year: row.year,
-    title: `${name} ${row.year} ${flag}`,
-    shortTitle: `${name} ${row.year}`,
+    title: stripTourFlags(`${name} ${row.year}`),
+    shortTitle: stripTourFlags(`${name} ${row.year}`),
     status: getTourStatus(row),
     dates: formatDateRange(row.start_date, row.end_date, row.year),
     startDate: row.start_date,
@@ -766,13 +744,13 @@ async function loadSupabaseData() {
     if (Array.isArray(playerRows) && playerRows.length) {
       allPlayers = playerRows;
       chooseDefaultHeadToHeadPlayers(playerRows);
-      players = playerRows.slice(0, 10).map((player, index) => {
+      players = playerRows.slice(0, 10).map((player) => {
         return {
           id: player.id,
           name: player.player_name,
-          nick: index % 2 ? "Short Game Scholar" : "The Quiet Assassin",
-          handicap: "TBC",
-          role: index === 0 ? "Captain's Pick" : "Nudger",
+          nick: "",
+          handicap: "?",
+          role: formatTourRole(null),
           avatar: getInitials(player.player_name),
           tours: 0,
           wins: 0,
@@ -849,6 +827,7 @@ let state = {
   statsOverviewLoading: false,
   statsOverviewError: "",
   statsActiveOnly: true,
+  statsOverviewSortKey: "points",
   defendingChampions: null,
   defendingChampionsLoading: false,
   teamTourWins: null,
@@ -949,7 +928,7 @@ function HeroCard(tour, extra = "") {
     <section class="hero-card" style="background-image: linear-gradient(180deg, rgba(2,12,8,.1), rgba(2,12,8,.82)), url('${tour.image}')">
       <div class="hero-content">
         ${extra}
-        <h2>${tour.title}</h2>
+        <h2>${escapeHtml(stripTourFlags(tour.title))}</h2>
         <p>${tour.dates}</p>
       </div>
     </section>
@@ -1043,7 +1022,7 @@ function BillSplitterScorecard(crocombePoints = 0, fosterPoints = 0) {
 function TourCard(tour) {
   return `
     <button class="tour-card" data-action="tour-detail" data-tour="${tour.id}" style="background-image: linear-gradient(90deg, rgba(2,14,9,.68), rgba(2,14,9,.1)), url('${tour.image}')">
-      <span class="tour-card-title">${tour.title}</span>
+      <span class="tour-card-title">${escapeHtml(stripTourFlags(tour.title))}</span>
       <span class="tour-card-dates">${tour.dates.replaceAll(" - ", " - ")}</span>
       <span class="status-pill">${tour.status}</span>
     </button>
@@ -1069,6 +1048,7 @@ function PlayerCard(player) {
   const nickname = String(player.nick || "").trim();
   const firstName = player.name.split(" ")[0];
   const about = String(player.about || "").trim();
+  const role = String(player.role || "").trim();
   const aboutText = about && about !== "[PLACEHOLDER]"
     ? formatProfileBody(about)
     : `<p>A key member of the Tourists, ${escapeHtml(firstName)} brings competitive spirit, big hitting and even bigger enthusiasm to every tour.</p>`;
@@ -1082,7 +1062,7 @@ function PlayerCard(player) {
         </div>
         <h2>${escapeHtml(player.name)}</h2>
         ${nickname ? `<p>"${escapeHtml(nickname)}"</p>` : ""}
-        <span class="role-pill">${icon("ball")}${escapeHtml(player.role || "Tourist")}</span>
+        ${role ? `<span class="role-pill">${icon("ball")}${escapeHtml(role)}</span>` : ""}
       </div>
       <div class="handicap">
         <span>Handicap</span>
@@ -1090,8 +1070,8 @@ function PlayerCard(player) {
       </div>
       <div class="player-stats">
         <span><span class="player-stat-value">${icon("flag")}<b>${player.tours}</b></span><small>${Number(player.tours) === 1 ? "Tour" : "Tours"}</small></span>
-        <span><span class="player-stat-value">${icon("trophy")}<b>${player.tourWins}</b></span><small>${Number(player.tourWins) === 1 ? "Tour Win" : "Tour Wins"}</small></span>
-        <span><span class="player-stat-value">${icon("star")}<b>${player.individualWins}</b></span><small>Individual Wins</small></span>
+        <span><span class="player-stat-value">${icon("star")}<b>${player.tourWins}</b></span><small>${Number(player.tourWins) === 1 ? "Tour Win" : "Tour Wins"}</small></span>
+        <span><span class="player-stat-value">${icon("ball")}<b>${player.individualWins}</b></span><small>Total Points</small></span>
       </div>
       <div class="profile-section profile-panel">
         <h3>${icon("user")}About ${escapeHtml(firstName)}</h3>
@@ -1140,7 +1120,7 @@ function Home() {
     </section>
     <section class="next-tour" style="background-image: linear-gradient(180deg, rgba(255,255,255,.05), rgba(3,19,13,.54)), url('${next.image}')">
       <span>Next Tour</span>
-      <h2>${next.title}</h2>
+      <h2>${escapeHtml(stripTourFlags(next.title))}</h2>
       <div class="countdown" data-countdown>
         <b data-countdown-days>--</b><i>:</i><b data-countdown-hours>--</b><i>:</i><b data-countdown-minutes>--</b><i>:</i><b data-countdown-seconds>--</b>
       </div>
@@ -1569,6 +1549,14 @@ function formatTeamPoints(points) {
   if (points === 0.5) return "1/2";
   if (Number.isInteger(points)) return String(points);
   return String(points).replace(".5", "½");
+}
+
+function formatHandicap(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw || raw === "[PLACEHOLDER]" || raw.toUpperCase() === "TBC") return "?";
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric)) return "?";
+  return raw;
 }
 
 function daysBetweenDates(fromDate, toDate = new Date()) {
@@ -2262,12 +2250,87 @@ function bestBy(records, matchesKey, winsKey) {
     })[0];
 }
 
+function leadersBy(records, valueFn, tieBreakFn = () => 0) {
+  const sorted = [...records]
+    .filter((record) => Number(valueFn(record)) > 0)
+    .sort((a, b) => Number(valueFn(b)) - Number(valueFn(a)) || tieBreakFn(a, b));
+
+  if (!sorted.length) return [];
+  const topValue = Number(valueFn(sorted[0]));
+  return sorted.filter((record) => Number(valueFn(record)) === topValue);
+}
+
+function percentLeaders(records, matchesKey, winsKey) {
+  const sorted = [...records]
+    .filter((record) => record[matchesKey] > 0)
+    .sort((a, b) => {
+      const percentDiff = percentage(b[winsKey], b[matchesKey]) - percentage(a[winsKey], a[matchesKey]);
+      if (percentDiff) return percentDiff;
+      return b[matchesKey] - a[matchesKey];
+    });
+  const top = sorted[0];
+
+  if (!top) return [];
+  return sorted.filter((record) => (
+    percentage(record[winsKey], record[matchesKey]) === percentage(top[winsKey], top[matchesKey]) &&
+    record[matchesKey] === top[matchesKey]
+  ));
+}
+
 function activePlayerNames() {
   return new Set(
     allPlayers
       .filter((player) => player.is_active !== false)
       .map((player) => player.player_name)
   );
+}
+
+function tourStarsByPlayer(rows = [], activeOnly = true) {
+  const winners = tourWinnerByYear(rows);
+  const allowedPlayers = activeOnly ? activePlayerNames() : null;
+  const playerRowsByName = allPlayers.reduce((playersByName, player) => {
+    playersByName[player.player_name] = {
+      player,
+      profileRows: state.touristProfileRows.filter((row) => Number(row.player_id) === Number(player.id)),
+    };
+    return playersByName;
+  }, {});
+  const playerNames = new Set([
+    ...Object.keys(playerRowsByName),
+    ...rows.flatMap((row) => [...splitTeamNames(row.crocs_team), ...splitTeamNames(row.foz_team)]),
+  ]);
+
+  return [...playerNames]
+    .filter((playerName) => !allowedPlayers || allowedPlayers.has(playerName))
+    .reduce((starsByPlayer, playerName) => {
+      const profileRows = playerRowsByName[playerName]?.profileRows || [];
+      const profileByYear = profileRows.reduce((byYear, row) => {
+        const year = tours.find((tour) => Number(tour.supabaseId) === Number(row.tour_id))?.year;
+        if (year && !byYear[year]) byYear[year] = row;
+        return byYear;
+      }, {});
+      const resultYears = rows
+        .filter((row) => splitTeamNames(row.crocs_team).includes(playerName) || splitTeamNames(row.foz_team).includes(playerName))
+        .map((row) => row.year)
+        .filter(Boolean);
+      const years = [...new Set([...Object.keys(profileByYear), ...resultYears].map(Number).filter(Boolean))];
+
+      starsByPlayer[playerName] = years.reduce((wins, year) => {
+        const winner = winners[year];
+        const profileTeam = profileByYear[year]?.team_name;
+        const resultTeam =
+          rows.find((match) => Number(match.year) === Number(year) && splitTeamNames(match.crocs_team).includes(playerName)) ? "Crocs" :
+          rows.find((match) => Number(match.year) === Number(year) && splitTeamNames(match.foz_team).includes(playerName)) ? "Foz" :
+          "";
+        const teamName = profileTeam || resultTeam;
+
+        if (winner === "Half") return wins + 0.5;
+        if (winner && teamName === winner) return wins + 1;
+        return wins;
+      }, 0);
+
+      return starsByPlayer;
+    }, {});
 }
 
 function buildOverviewStats(rows, activeOnly = true) {
@@ -2282,22 +2345,53 @@ function buildOverviewStats(rows, activeOnly = true) {
       .forEach((playerName) => addOverviewResult(recordsByPlayer, playerName, match, "Foz"));
   });
 
-  const records = Object.values(recordsByPlayer);
+  const starsByPlayer = tourStarsByPlayer(rows, activeOnly);
+  const records = Object.values(recordsByPlayer).map((record) => ({
+    ...record,
+    stars: starsByPlayer[record.playerName] || 0,
+  }));
   const highestWin = bestBy(records, "matches", "wins");
   const highestFourball = bestBy(records, "fourballMatches", "fourballWins");
   const highestSingles = bestBy(records, "singlesMatches", "singlesWins");
   const mostWins = [...records].sort((a, b) => b.wins - a.wins || b.matches - a.matches)[0];
   const mostPoints = [...records].sort((a, b) => b.points - a.points || b.wins - a.wins)[0];
   const mostMatches = [...records].sort((a, b) => b.matches - a.matches || b.wins - a.wins)[0];
+  const highestWinLeaders = percentLeaders(records, "matches", "wins");
+  const highestFourballLeaders = percentLeaders(records, "fourballMatches", "fourballWins");
+  const highestSinglesLeaders = percentLeaders(records, "singlesMatches", "singlesWins");
+  const mostWinsLeaders = leadersBy(records, (record) => record.wins, (a, b) => b.matches - a.matches);
+  const mostPointsLeaders = leadersBy(records, (record) => record.points, (a, b) => b.wins - a.wins);
+  const mostMatchesLeaders = leadersBy(records, (record) => record.matches, (a, b) => b.wins - a.wins);
 
-  return { highestWin, highestFourball, highestSingles, mostWins, mostPoints, mostMatches, records, totalMatches: rows.length };
+  return {
+    highestWin,
+    highestFourball,
+    highestSingles,
+    mostWins,
+    mostPoints,
+    mostMatches,
+    highestWinLeaders,
+    highestFourballLeaders,
+    highestSinglesLeaders,
+    mostWinsLeaders,
+    mostPointsLeaders,
+    mostMatchesLeaders,
+    records,
+    totalMatches: rows.length,
+  };
 }
 
 function LeaderStat(label, name, value, detail = "") {
+  const nameText = String(name || "N/A");
+  const nameLength = nameText.length;
+  const nameCount = nameText.split(/\s*(?:,|\/|&)\s*/).filter(Boolean).length;
+  const compactClass = nameLength > 34 || nameCount > 1 ? " compact" : "";
+  const tightClass = nameLength > 48 || nameCount > 3 ? " tight" : "";
+
   return `
     <article class="leader-stat">
       <span>${label}</span>
-      <strong>${escapeHtml(name)}</strong>
+      <strong class="leader-name${compactClass}${tightClass}">${escapeHtml(nameText)}</strong>
       <div class="leader-value"><b>${escapeHtml(value)}</b>${detail ? `<small>(${escapeHtml(detail)})</small>` : ""}</div>
     </article>
   `;
@@ -2312,12 +2406,41 @@ function percentLeader(record, matchesKey, winsKey) {
   };
 }
 
+function namesForLeaders(records = []) {
+  if (!records.length) return "N/A";
+  return records.map((record) => record.playerName).join(", ");
+}
+
+function percentLeaderDisplay(records, fallback, matchesKey, winsKey) {
+  const leader = records[0] || fallback;
+  if (!leader) return { name: "N/A", value: "No matches", detail: "" };
+
+  return {
+    name: namesForLeaders(records.length ? records : [leader]),
+    value: `${percentage(leader[winsKey], leader[matchesKey])}%`,
+    detail: `${leader[winsKey]}/${leader[matchesKey]}`,
+  };
+}
+
+function mostTourStars(rows = [], activeOnly = true) {
+  const records = Object.entries(tourStarsByPlayer(rows, activeOnly))
+    .map(([playerName, stars]) => ({ playerName, stars }));
+  const leaders = leadersBy(records, (record) => record.stars, (a, b) => a.playerName.localeCompare(b.playerName));
+
+  return {
+    name: namesForLeaders(leaders),
+    value: formatTeamPoints(leaders[0]?.stars || 0),
+    detail: "tour wins",
+  };
+}
+
 function StatsOverview() {
   const rows = state.statsOverviewRows || [];
   const stats = buildOverviewStats(rows, state.statsActiveOnly);
-  const highestWin = percentLeader(stats.highestWin, "matches", "wins");
-  const highestFourball = percentLeader(stats.highestFourball, "fourballMatches", "fourballWins");
-  const highestSingles = percentLeader(stats.highestSingles, "singlesMatches", "singlesWins");
+  const highestWin = percentLeaderDisplay(stats.highestWinLeaders, stats.highestWin, "matches", "wins");
+  const highestFourball = percentLeaderDisplay(stats.highestFourballLeaders, stats.highestFourball, "fourballMatches", "fourballWins");
+  const highestSingles = percentLeaderDisplay(stats.highestSinglesLeaders, stats.highestSingles, "singlesMatches", "singlesWins");
+  const tourStars = mostTourStars(rows, state.statsActiveOnly);
 
   if (state.statsOverviewLoading) {
     return Card(`<p class="empty-state">Loading overview stats...</p>`);
@@ -2332,50 +2455,108 @@ function StatsOverview() {
   }
 
   return `
-    <label class="stats-filter">
-      <input type="checkbox" data-action="toggle-active-nudgers" ${state.statsActiveOnly ? "checked" : ""}>
-      <span>Active Nudgers Only</span>
-    </label>
+    <div class="stats-filter" role="group" aria-label="Player filter">
+      <button class="${state.statsActiveOnly ? "active" : ""}" data-action="set-active-nudgers" data-active="1">Active Only</button>
+      <button class="${state.statsActiveOnly ? "" : "active"}" data-action="set-active-nudgers" data-active="0">All Players</button>
+    </div>
     <div class="leader-grid">
+      ${LeaderStat("Most Stars (Tour Wins)", tourStars.name, tourStars.value, tourStars.detail)}
       ${LeaderStat("Highest Win %", highestWin.name, highestWin.value, highestWin.detail)}
       ${LeaderStat("Highest Fourball Win %", highestFourball.name, highestFourball.value, highestFourball.detail)}
       ${LeaderStat("Highest Singles Win %", highestSingles.name, highestSingles.value, highestSingles.detail)}
-      ${LeaderStat("Most Wins", stats.mostWins?.playerName || "N/A", String(stats.mostWins?.wins || 0), `${stats.mostWins?.matches || 0} matches`)}
-      ${LeaderStat("Most Points", stats.mostPoints?.playerName || "N/A", formatTeamPoints(stats.mostPoints?.points || 0), `${stats.mostPoints?.wins || 0} wins`)}
-      ${LeaderStat("Most Matches Played", stats.mostMatches?.playerName || "N/A", String(stats.mostMatches?.matches || 0), "matches")}
+      ${LeaderStat("Most Points", namesForLeaders(stats.mostPointsLeaders), formatTeamPoints(stats.mostPoints?.points || 0), `${stats.mostPoints?.wins || 0} wins`)}
+      ${LeaderStat("Most Matches Played", namesForLeaders(stats.mostMatchesLeaders), String(stats.mostMatches?.matches || 0), "matches")}
       ${LeaderStat("Total Nudgers Matches Played", String(stats.totalMatches), "")}
     </div>
     ${OverviewLeaderboard(stats.records)}
   `;
 }
 
+const overviewLeaderboardColumns = [
+  {
+    key: "points",
+    label: ["Total", "Points"],
+    value: (record) => record.points,
+    render: (record) => formatTeamPoints(record.points),
+  },
+  {
+    key: "stars",
+    label: ["Total", "Stars"],
+    value: (record) => record.stars,
+    render: (record) => formatTeamPoints(record.stars),
+  },
+  {
+    key: "fourballWinPercent",
+    label: ["Fourball", "Win %"],
+    value: (record) => percentage(record.fourballWins, record.fourballMatches),
+    render: (record) => `${percentage(record.fourballWins, record.fourballMatches)}%`,
+  },
+  {
+    key: "singlesWinPercent",
+    label: ["Singles", "Win %"],
+    value: (record) => percentage(record.singlesWins, record.singlesMatches),
+    render: (record) => `${percentage(record.singlesWins, record.singlesMatches)}%`,
+  },
+  {
+    key: "totalWinPercent",
+    label: ["Total", "Win %"],
+    value: (record) => percentage(record.wins, record.matches),
+    render: (record) => `${percentage(record.wins, record.matches)}%`,
+  },
+  {
+    key: "matches",
+    label: ["Total", "Played"],
+    value: (record) => record.matches,
+    render: (record) => record.matches,
+  },
+];
+
+function sortOverviewLeaderboard(records = []) {
+  const sortKey = overviewLeaderboardColumns.some((column) => column.key === state.statsOverviewSortKey)
+    ? state.statsOverviewSortKey
+    : "points";
+  const sortColumn = overviewLeaderboardColumns.find((column) => column.key === sortKey);
+
+  return [...records].sort((a, b) => {
+    const valueDiff = Number(sortColumn.value(b)) - Number(sortColumn.value(a));
+    if (valueDiff) return valueDiff;
+    return b.points - a.points || b.matches - a.matches || a.playerName.localeCompare(b.playerName);
+  });
+}
+
+function OverviewHeaderButton(column) {
+  const isActive = state.statsOverviewSortKey === column.key;
+  const label = column.label.join(" ");
+
+  return `
+    <button class="overview-sort-button${isActive ? " active" : ""}" data-action="overview-sort" data-sort="${column.key}" aria-label="Sort by ${escapeHtml(label)} descending">
+      ${column.label.map((line) => `<span>${escapeHtml(line)}</span>`).join("")}
+    </button>
+  `;
+}
+
 function OverviewLeaderboard(records = []) {
-  const rows = [...records].sort((a, b) => b.points - a.points || b.matches - a.matches);
+  const rows = sortOverviewLeaderboard(records);
 
   return `
     <section class="overview-table-card">
-      <h3>Player Records</h3>
+      <div class="overview-table-heading">
+        <h3>Player Records</h3>
+        <span>Swipe for more stats &rarr;</span>
+      </div>
       <div class="overview-table-wrap">
         <table class="overview-table">
           <thead>
             <tr>
               <th>Name</th>
-              <th>Total Played</th>
-              <th>Total Won</th>
-              <th>Fourball Win %</th>
-              <th>Singles Win %</th>
-              <th>Total Win %</th>
+              ${overviewLeaderboardColumns.map((column) => `<th>${OverviewHeaderButton(column)}</th>`).join("")}
             </tr>
           </thead>
           <tbody>
             ${rows.map((record) => `
               <tr>
                 <th>${escapeHtml(record.playerName)}</th>
-                <td>${record.matches}</td>
-                <td>${formatTeamPoints(record.points)}</td>
-                <td>${percentage(record.fourballWins, record.fourballMatches)}%</td>
-                <td>${percentage(record.singlesWins, record.singlesMatches)}%</td>
-                <td>${percentage(record.wins, record.matches)}%</td>
+                ${overviewLeaderboardColumns.map((column) => `<td>${escapeHtml(column.render(record))}</td>`).join("")}
               </tr>
             `).join("")}
           </tbody>
@@ -2406,6 +2587,17 @@ function Stats() {
 
 function latestByTourId(rows = []) {
   return [...rows].sort((a, b) => Number(b.tour_id || 0) - Number(a.tour_id || 0))[0];
+}
+
+function profileForTourYear(profileRows = [], year) {
+  const tour = tours.find((item) => Number(item.year) === Number(year));
+  if (!tour?.supabaseId) return null;
+  return profileRows.find((row) => Number(row.tour_id) === Number(tour.supabaseId)) || null;
+}
+
+function formatTourRole(value, year = 2026) {
+  const role = String(value || "").trim();
+  return `${year} Role: ${role && role !== "[PLACEHOLDER]" ? role : "TBC"}`;
 }
 
 function tourWinnerByYear(rows = []) {
@@ -2466,6 +2658,7 @@ function buildTouristPlayers() {
       tourWins: player.wins ?? "[PLACEHOLDER]",
       individualWins: player.wins ?? "[PLACEHOLDER]",
       about: player.about || "[PLACEHOLDER]",
+      role: formatTourRole(null),
       strengths: player.strengths?.length ? player.strengths : ["[PLACEHOLDER]"],
       weaknesses: player.weaknesses?.length ? player.weaknesses : ["[PLACEHOLDER]"],
     }));
@@ -2486,6 +2679,7 @@ function buildTouristPlayers() {
       const profileRows = state.touristProfileRows.filter((row) => Number(row.player_id) === Number(player.id));
       const handicapRows = state.touristHandicapRows.filter((row) => Number(row.player_id) === Number(player.id));
       const latestProfile = latestByTourId(profileRows);
+      const tour2026Profile = profileForTourYear(profileRows, 2026);
       const latestHandicap = latestByTourId(handicapRows);
       const record = recordsByName[player.player_name] || emptyPlayerRecord(player.player_name);
 
@@ -2494,8 +2688,8 @@ function buildTouristPlayers() {
         name: player.player_name,
         nick: playerNickname(player),
         isActive: player.is_active !== false,
-        handicap: latestHandicap?.handicap ?? "[PLACEHOLDER]",
-        role: latestProfile?.tour_role || "[PLACEHOLDER]",
+        handicap: formatHandicap(latestHandicap?.handicap),
+        role: formatTourRole(tour2026Profile?.tour_role, 2026),
         tours: playerTourYears(player.player_name, profileRows).length || "[PLACEHOLDER]",
         tourWins: formatTeamPoints(playerTourWins(player.player_name, profileRows)),
         individualWins: record.wins || 0,
@@ -2870,8 +3064,11 @@ app.addEventListener("click", (event) => {
     if (state.statSubTab === "Head-to-Head" && allPlayers.length) loadHeadToHeadMatches();
     if (state.statSubTab === "Individual" && allPlayers.length) loadIndividualMatches();
   }
-  if (action === "toggle-active-nudgers") {
-    state.statsActiveOnly = target.checked;
+  if (action === "set-active-nudgers") {
+    state.statsActiveOnly = target.dataset.active !== "0";
+  }
+  if (action === "overview-sort") {
+    state.statsOverviewSortKey = target.dataset.sort || "points";
   }
   if (action === "player") {
     const touristPlayers = buildTouristPlayers();
