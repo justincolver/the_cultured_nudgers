@@ -934,6 +934,7 @@ let state = {
   tourPageEditingKey: null,
   tourPageDrafts: {},
   homeMenuOpen: false,
+  birthdayOverlayDismissed: localStorage.getItem("nudgers-james-birthday-dismissed") === "1",
   restoredScrollTop: 0,
   updateAvailable: false,
 };
@@ -1003,6 +1004,32 @@ function HomeMenuButton() {
         <button data-action="logout" type="button">${icon("logout")}<span>Log Out</span></button>
       </div>
     ` : ""}
+  `;
+}
+
+function BirthdayOverlay() {
+  if (state.birthdayOverlayDismissed) return "";
+  return `
+    <section class="birthday-overlay" aria-label="Birthday message for James Barrie">
+      <button class="birthday-close" data-action="dismiss-birthday-overlay" type="button" aria-label="Close birthday message">×</button>
+      <div class="birthday-confetti" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="birthday-balloons" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="birthday-sparkles" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="birthday-copy">
+        <span class="eyebrow">Tour Announcement</span>
+        <div class="birthday-headshot">
+          <img src="/assets/images/headshots/james-barrie.png" alt="James Barrie" />
+        </div>
+        <h2>Happy Birthday, James Barrie!</h2>
+        <button class="birthday-cheers" data-action="dismiss-birthday-overlay" type="button">Cheers now</button>
+      </div>
+    </section>
   `;
 }
 
@@ -1255,6 +1282,7 @@ function Home() {
   if (!hasLoadedSupabase) {
     return `
       ${Header()}
+      ${BirthdayOverlay()}
       <section class="home-logo">${HomeMenuButton()}${HomeRefreshButton()}${Logo()}<p>Welcome back, Nudger 👋</p></section>
       ${Card(`
         <span class="eyebrow">Next Tour</span>
@@ -1276,6 +1304,7 @@ function Home() {
     : next.dates;
   return `
     ${Header()}
+    ${BirthdayOverlay()}
     <section class="home-logo">
       ${HomeMenuButton()}
       ${HomeRefreshButton()}
@@ -3456,6 +3485,13 @@ app.addEventListener("click", (event) => {
   }
   if (action === "toggle-home-menu") {
     state.homeMenuOpen = !state.homeMenuOpen;
+    render();
+    persistRoute();
+    return;
+  }
+  if (action === "dismiss-birthday-overlay") {
+    state.birthdayOverlayDismissed = true;
+    localStorage.setItem("nudgers-james-birthday-dismissed", "1");
     render();
     persistRoute();
     return;
