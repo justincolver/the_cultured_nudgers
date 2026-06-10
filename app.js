@@ -1012,7 +1012,7 @@ function HomeMenuButton() {
 function BirthdayOverlay() {
   if (state.birthdayOverlayDismissed) return "";
   return `
-    <section class="birthday-overlay" aria-label="Birthday message for James Barrie">
+    <section class="birthday-overlay" data-birthday-overlay-root aria-label="Birthday message for James Barrie">
       <button class="birthday-close" data-action="dismiss-birthday-overlay" type="button" aria-label="Close birthday message">×</button>
       <div class="birthday-confetti" aria-hidden="true">
         <span></span><span></span><span></span><span></span><span></span><span></span>
@@ -1036,6 +1036,21 @@ function BirthdayOverlay() {
       </div>
     </section>
   `;
+}
+
+function syncBirthdayOverlay() {
+  const existing = document.querySelector("[data-birthday-overlay-root]");
+  const shouldShow =
+    state.tab === "home" &&
+    !state.detailTour &&
+    !state.birthdayOverlayDismissed &&
+    hasLoadedSupabase &&
+    !window.matchMedia("(min-width: 769px)").matches;
+
+  if (shouldShow && !existing) {
+    document.body.insertAdjacentHTML("beforeend", BirthdayOverlay());
+  }
+  if (!shouldShow && existing) existing.remove();
 }
 
 function Header(title = "", detail = false) {
@@ -1308,7 +1323,6 @@ function Home() {
     : next.dates;
   return `
     ${Header()}
-    ${BirthdayOverlay()}
     <section class="home-logo">
       ${HomeMenuButton()}
       ${HomeRefreshButton()}
@@ -3417,6 +3431,7 @@ function restoreScrollPosition() {
 function render() {
   if (window.matchMedia("(min-width: 769px)").matches) {
     app.innerHTML = DesktopGate();
+    syncBirthdayOverlay();
     return;
   }
   const screens = {
@@ -3440,6 +3455,7 @@ function render() {
     </div>
   `;
   updateCountdown();
+  syncBirthdayOverlay();
   restoreScrollPosition();
   requestAnimationFrame(updateActiveTourProfileRail);
   if (state.tourPageEditingKey) {
@@ -3449,6 +3465,14 @@ function render() {
     });
   }
 }
+
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-action='dismiss-birthday-overlay']");
+  if (!target) return;
+  state.birthdayOverlayDismissed = true;
+  syncBirthdayOverlay();
+  persistRoute();
+});
 
 app.addEventListener("click", (event) => {
   const clickedHomeMenu = event.target.closest(".home-menu, .home-menu-btn");
@@ -3496,7 +3520,7 @@ app.addEventListener("click", (event) => {
   }
   if (action === "dismiss-birthday-overlay") {
     state.birthdayOverlayDismissed = true;
-    render();
+    syncBirthdayOverlay();
     persistRoute();
     return;
   }

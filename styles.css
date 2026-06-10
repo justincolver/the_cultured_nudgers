@@ -227,15 +227,15 @@ svg {
 
 .birthday-overlay {
   position: fixed;
-  top: 20dvh;
+  top: 0;
   right: 0;
   left: 0;
   z-index: 80;
   display: grid;
-  height: 68dvh;
-  min-height: 460px;
+  height: 76dvh;
+  min-height: 500px;
   place-items: center;
-  padding: 18px 22px 24px;
+  padding: calc(18px + env(safe-area-inset-top)) 22px 24px;
   overflow: hidden;
   background:
     radial-gradient(circle at 18% 16%, rgba(239, 209, 148, .2), transparent 24%),
@@ -257,7 +257,7 @@ svg {
 
 .birthday-close {
   position: absolute;
-  top: 16px;
+  top: calc(16px + env(safe-area-inset-top));
   right: 18px;
   z-index: 2;
   display: grid;
