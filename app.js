@@ -1009,10 +1009,44 @@ function HomeMenuButton() {
   `;
 }
 
+function birthdayMonthDay(value = "") {
+  const match = String(value).match(/^\d{4}-(\d{2})-(\d{2})$/);
+  return match ? `${match[1]}-${match[2]}` : "";
+}
+
+function todaysBirthdayPlayers() {
+  const now = new Date();
+  const today = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return allPlayers.filter((player) =>
+    player?.is_active !== false &&
+    birthdayMonthDay(player.player_birthday) === today
+  );
+}
+
+function formatBirthdayNames(birthdayPlayers) {
+  const names = birthdayPlayers.map((player) => player.player_name).filter(Boolean);
+  if (names.length <= 1) return names[0] || "Nudger";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+function BirthdayHeadshot(birthdayPlayers) {
+  const firstPlayer = birthdayPlayers[0];
+  const headshot = headshotForPlayer(firstPlayer);
+  const name = firstPlayer?.player_name || "Nudger";
+  if (headshot) {
+    return `<img src="${headshot}" alt="${escapeHtml(name)}" />`;
+  }
+  return `<span class="birthday-headshot-fallback">${escapeHtml(getInitials(name))}</span>`;
+}
+
 function BirthdayOverlay() {
+  const birthdayPlayers = todaysBirthdayPlayers();
+  if (!birthdayPlayers.length) return "";
   if (state.birthdayOverlayDismissed) return "";
+  const birthdayNames = formatBirthdayNames(birthdayPlayers);
   return `
-    <section class="birthday-overlay" data-birthday-overlay-root aria-label="Birthday message for James Barrie">
+    <section class="birthday-overlay" data-birthday-overlay-root aria-label="Birthday message for ${escapeHtml(birthdayNames)}">
       <button class="birthday-close" data-action="dismiss-birthday-overlay" type="button" aria-label="Close birthday message">×</button>
       <div class="birthday-confetti" aria-hidden="true">
         <span></span><span></span><span></span><span></span><span></span><span></span>
@@ -1026,9 +1060,9 @@ function BirthdayOverlay() {
       <div class="birthday-copy">
         <span class="eyebrow">Tour Announcement</span>
         <div class="birthday-headshot">
-          <img src="/assets/images/headshots/james-barrie.png" alt="James Barrie" />
+          ${BirthdayHeadshot(birthdayPlayers)}
         </div>
-        <h2>Happy Birthday, James Barrie!</h2>
+        <h2>Happy Birthday, ${escapeHtml(birthdayNames)}!</h2>
         <button class="birthday-cheers" data-action="dismiss-birthday-overlay" type="button">
           Cheers now
           <span aria-hidden="true">×</span>
@@ -1044,6 +1078,7 @@ function syncBirthdayOverlay() {
     state.tab === "home" &&
     !state.detailTour &&
     !state.birthdayOverlayDismissed &&
+    todaysBirthdayPlayers().length > 0 &&
     hasLoadedSupabase &&
     !window.matchMedia("(min-width: 769px)").matches;
 
