@@ -227,15 +227,15 @@ svg {
 
 .birthday-overlay {
   position: fixed;
-  top: 0;
+  top: 20dvh;
   right: 0;
   left: 0;
   z-index: 80;
   display: grid;
-  height: 76dvh;
-  min-height: 500px;
+  height: 68dvh;
+  min-height: 460px;
   place-items: center;
-  padding: calc(18px + env(safe-area-inset-top)) 22px 24px;
+  padding: 18px 22px 24px;
   overflow: hidden;
   background:
     radial-gradient(circle at 18% 16%, rgba(239, 209, 148, .2), transparent 24%),
@@ -257,7 +257,7 @@ svg {
 
 .birthday-close {
   position: absolute;
-  top: calc(16px + env(safe-area-inset-top));
+  top: 16px;
   right: 18px;
   z-index: 2;
   display: grid;
@@ -328,6 +328,9 @@ svg {
 }
 
 .birthday-cheers {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   margin-top: 22px;
   min-height: 46px;
   padding: 0 20px;
@@ -337,6 +340,18 @@ svg {
   color: #062016;
   font-size: 14px;
   font-weight: 900;
+}
+
+.birthday-cheers span {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  background: rgba(6, 32, 22, .16);
+  border: 1px solid rgba(6, 32, 22, .28);
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .birthday-confetti span,

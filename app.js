@@ -934,7 +934,7 @@ let state = {
   tourPageEditingKey: null,
   tourPageDrafts: {},
   homeMenuOpen: false,
-  birthdayOverlayDismissed: localStorage.getItem("nudgers-james-birthday-dismissed") === "1",
+  birthdayOverlayDismissed: false,
   restoredScrollTop: 0,
   updateAvailable: false,
 };
@@ -942,6 +942,8 @@ let state = {
 const app = document.querySelector("#app");
 let waitingServiceWorker = null;
 let refreshingForUpdate = false;
+let serviceWorkerRegistration = null;
+let lastAutoUpdateCheckAt = 0;
 
 function icon(name) {
   const icons = {
@@ -1027,7 +1029,10 @@ function BirthdayOverlay() {
           <img src="/assets/images/headshots/james-barrie.png" alt="James Barrie" />
         </div>
         <h2>Happy Birthday, James Barrie!</h2>
-        <button class="birthday-cheers" data-action="dismiss-birthday-overlay" type="button">Cheers now</button>
+        <button class="birthday-cheers" data-action="dismiss-birthday-overlay" type="button">
+          Cheers now
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
     </section>
   `;
@@ -1282,7 +1287,6 @@ function Home() {
   if (!hasLoadedSupabase) {
     return `
       ${Header()}
-      ${BirthdayOverlay()}
       <section class="home-logo">${HomeMenuButton()}${HomeRefreshButton()}${Logo()}<p>Welcome back, Nudger 👋</p></section>
       ${Card(`
         <span class="eyebrow">Next Tour</span>
@@ -3468,6 +3472,7 @@ app.addEventListener("click", (event) => {
     state.tab = target.dataset.tab;
     state.detailTour = null;
     state.matchReportOpenYear = null;
+    if (state.tab === "home") state.birthdayOverlayDismissed = false;
     if (state.tab === "this-tour") {
       state.detailSubTab = "Overview";
       state.thisTourOverviewPanel = "";
@@ -3491,7 +3496,6 @@ app.addEventListener("click", (event) => {
   }
   if (action === "dismiss-birthday-overlay") {
     state.birthdayOverlayDismissed = true;
-    localStorage.setItem("nudgers-james-birthday-dismissed", "1");
     render();
     persistRoute();
     return;
@@ -3795,6 +3799,25 @@ function showUpdateAvailable(worker) {
   }
 }
 
+function activateWaitingServiceWorker(worker) {
+  waitingServiceWorker = worker;
+  worker?.postMessage({ type: "SKIP_WAITING" });
+}
+
+function checkForAppUpdate({ autoApply = false } = {}) {
+  if (!serviceWorkerRegistration) return;
+  const now = Date.now();
+  if (now - lastAutoUpdateCheckAt < 30000) return;
+  lastAutoUpdateCheckAt = now;
+
+  serviceWorkerRegistration.update().then(() => {
+    const waitingWorker = serviceWorkerRegistration.waiting;
+    if (!waitingWorker || !navigator.serviceWorker.controller) return;
+    if (autoApply) activateWaitingServiceWorker(waitingWorker);
+    else showUpdateAvailable(waitingWorker);
+  }).catch(() => {});
+}
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (refreshingForUpdate) return;
@@ -3804,8 +3827,9 @@ if ("serviceWorker" in navigator) {
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").then((registration) => {
+      serviceWorkerRegistration = registration;
       if (registration.waiting && navigator.serviceWorker.controller) {
-        showUpdateAvailable(registration.waiting);
+        activateWaitingServiceWorker(registration.waiting);
       }
 
       registration.addEventListener("updatefound", () => {
@@ -3813,10 +3837,15 @@ if ("serviceWorker" in navigator) {
         if (!newWorker) return;
         newWorker.addEventListener("statechange", () => {
           if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-            showUpdateAvailable(newWorker);
+            activateWaitingServiceWorker(newWorker);
           }
         });
       });
+      checkForAppUpdate({ autoApply: true });
     }).catch(() => {});
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkForAppUpdate({ autoApply: true });
   });
 }
