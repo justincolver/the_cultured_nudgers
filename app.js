@@ -3607,12 +3607,33 @@ function namesForLeaders(records = []) {
   return records.map((record) => record.playerName).join(", ");
 }
 
+function compactName(name = "") {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return parts[0] || "N/A";
+  return `${parts[0]} ${parts[parts.length - 1][0]}`;
+}
+
+function namesForLeaderCard(records = []) {
+  if (!records.length) return "N/A";
+  if (records.length === 1) return records[0].playerName;
+  return records.map((record) => compactName(record.playerName)).join(", ");
+}
+
+function rivalNameForCard(pair = []) {
+  return pair.map(compactName).join(" vs ");
+}
+
+function rivalsNameForCard(pairs = []) {
+  if (!pairs.length) return "N/A";
+  return pairs.map(rivalNameForCard).join(", ");
+}
+
 function percentLeaderDisplay(records, fallback, matchesKey, winsKey) {
   const leader = records[0] || fallback;
   if (!leader) return { name: "N/A", value: "No matches", detail: "" };
 
   return {
-    name: namesForLeaders(records.length ? records : [leader]),
+    name: namesForLeaderCard(records.length ? records : [leader]),
     value: `${percentage(leader[winsKey], leader[matchesKey])}%`,
     detail: `${leader[winsKey]}/${leader[matchesKey]}`,
   };
@@ -3624,7 +3645,7 @@ function mostTourStars(rows = [], activeOnly = true) {
   const leaders = leadersBy(records, (record) => record.stars, (a, b) => a.playerName.localeCompare(b.playerName));
 
   return {
-    name: namesForLeaders(leaders),
+    name: namesForLeaderCard(leaders),
     value: formatTeamPoints(leaders[0]?.stars || 0),
     detail: "tour wins",
     leaders,
@@ -3891,7 +3912,7 @@ function mostImprovedHandicap(activeOnly = true) {
   if (!leader) return pending;
 
   return {
-    name: namesForLeaders(leaders),
+    name: namesForLeaderCard(leaders),
     value: `-${formatHandicapChange(leader.drop)}`,
     detail: "handicap drop",
     leaders,
@@ -4108,17 +4129,17 @@ function StatsOverview() {
         detail: "highest-singles",
         disabled: !stats.highestSinglesLeaders.length,
       })}
-      ${LeaderStat("Most Points", namesForLeaders(stats.mostPointsLeaders), formatTeamPoints(stats.mostPoints?.points || 0), `${stats.mostPoints?.wins || 0} wins`, {
+      ${LeaderStat("Most Points", namesForLeaderCard(stats.mostPointsLeaders), formatTeamPoints(stats.mostPoints?.points || 0), `${stats.mostPoints?.wins || 0} wins`, {
         action: "show-stats-detail",
         detail: "most-points",
         disabled: !stats.mostPointsLeaders.length,
       })}
-      ${LeaderStat("Most Matches Played", namesForLeaders(stats.mostMatchesLeaders), String(stats.mostMatches?.matches || 0), "matches", {
+      ${LeaderStat("Most Matches Played", namesForLeaderCard(stats.mostMatchesLeaders), String(stats.mostMatches?.matches || 0), "matches", {
         action: "show-stats-detail",
         detail: "most-matches",
         disabled: !stats.mostMatchesLeaders.length,
       })}
-      ${LeaderStat("Rivals", stats.rivals.name, stats.rivals.value, stats.rivals.detail, {
+      ${LeaderStat("Rivals", rivalsNameForCard(stats.rivals.pairs), stats.rivals.value, stats.rivals.detail, {
         action: "show-rivals-detail",
         disabled: !stats.rivals.players.length,
       })}
