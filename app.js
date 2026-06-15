@@ -1920,6 +1920,7 @@ function RandomNudgerGenerator() {
   const playersList = currentTourNudgers();
   const draw = state.randomNudgerDraw;
   const mode = draw.mode || "pairs";
+  preloadImages(playersList.map(headshotForPlayer));
 
   if (state.tourProfilesLoadingTourId === tour?.supabaseId) {
     return Card(`<p class="empty-state">Loading Nudgers...</p>`);
@@ -1941,10 +1942,27 @@ function RandomNudgerGenerator() {
   `;
 }
 
+function updateRandomSlotFace(playerId) {
+  const player = getPlayerById(playerId);
+  const face = document.querySelector(".random-slot-face");
+  if (!player || !face) return;
+
+  const photo = face.querySelector(".random-slot-photo");
+  const name = face.querySelector("strong");
+  const headshot = headshotForPlayer(player);
+  if (photo) {
+    photo.innerHTML = headshot
+      ? `<img src="${headshot}" alt="${escapeHtml(player.player_name)}" />`
+      : `<b>${escapeHtml(getInitials(player.player_name))}</b>`;
+  }
+  if (name) name.textContent = firstNameForPlayer(player).toUpperCase();
+}
+
 function startRandomNudgerSlot(playersList = currentTourNudgers()) {
   if (!playersList.length) return;
   if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
 
+  preloadImages(playersList.map(headshotForPlayer));
   const order = shuffledIds(playersList);
   const totalSteps = Math.max(34, playersList.length * 2 + 10);
   let step = 0;
@@ -1964,7 +1982,7 @@ function startRandomNudgerSlot(playersList = currentTourNudgers()) {
     const progress = step / totalSteps;
     const playerId = order[step % order.length];
     state.randomNudgerDraw.slot.currentPlayerId = playerId;
-    render();
+    updateRandomSlotFace(playerId);
 
     if (step >= totalSteps) {
       state.randomNudgerDraw.slot = {
@@ -1973,7 +1991,14 @@ function startRandomNudgerSlot(playersList = currentTourNudgers()) {
         selectedPlayerId: playerId,
       };
       randomNudgerSpinTimer = null;
-      render();
+      const slotStage = document.querySelector(".random-slot-stage");
+      const slotButton = document.querySelector(".random-slot-start");
+      slotStage?.classList.remove("spinning");
+      slotStage?.classList.add("settled");
+      if (slotButton) {
+        slotButton.disabled = false;
+        slotButton.textContent = "Choose Nudger";
+      }
       persistRoute();
       return;
     }
@@ -3981,6 +4006,12 @@ app.addEventListener("click", (event) => {
       const content = document.querySelector(".content");
       state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
       state.randomNudgerDraw.revealed = [...state.randomNudgerDraw.revealed, playerId];
+      target.classList.remove("covered");
+      target.classList.add("revealed");
+      target.disabled = true;
+      target.setAttribute("aria-label", firstNameForPlayer(getPlayerById(playerId)));
+      persistRoute();
+      return;
     }
   }
   if (action === "choose-random-nudger") {
