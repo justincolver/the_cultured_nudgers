@@ -1047,6 +1047,8 @@ let state = {
   statsActiveOnly: true,
   statsOverviewSortKey: "points",
   rivalsOverlayOpen: false,
+  statsOverlayKey: "",
+  statsOverlayIndex: 0,
   selectedRivals: [],
   selectedRivalPairs: [],
   activeRivalPairIndex: 0,
@@ -3579,7 +3581,7 @@ function LeaderStat(label, name, value, detail = "", options = {}) {
   const tightClass = nameLength > 48 || nameCount > 3 ? " tight" : "";
   const Tag = options.action ? "button" : "article";
   const attrs = options.action
-    ? ` type="button" data-action="${escapeHtml(options.action)}"${options.disabled ? " disabled" : ""}`
+    ? ` type="button" data-action="${escapeHtml(options.action)}"${options.detail ? ` data-detail="${escapeHtml(options.detail)}"` : ""}${options.disabled ? " disabled" : ""}`
     : "";
 
   return `
@@ -3625,7 +3627,102 @@ function mostTourStars(rows = [], activeOnly = true) {
     name: namesForLeaders(leaders),
     value: formatTeamPoints(leaders[0]?.stars || 0),
     detail: "tour wins",
+    leaders,
   };
+}
+
+function playerTeamInMatch(match, playerName) {
+  if (splitTeamNames(match.crocs_team).includes(playerName)) return "Crocs";
+  if (splitTeamNames(match.foz_team).includes(playerName)) return "Foz";
+  return "";
+}
+
+function rowsForPlayerStat(rows = [], playerName = "", key = "") {
+  return rows.filter((match) => {
+    const team = playerTeamInMatch(match, playerName);
+    if (!team) return false;
+    const format = String(match.format || "").toLowerCase();
+    if (key === "highest-fourball") return format.includes("fourball");
+    if (key === "highest-singles") return format.includes("singles");
+    return true;
+  });
+}
+
+function playerMatchOutcome(match, playerName) {
+  const team = playerTeamInMatch(match, playerName);
+  if (match.result === "Half") return "Halved";
+  if (match.result === `Win Team ${team}`) return "Win";
+  return "Loss";
+}
+
+function OverviewPlayerMatchCard(match, playerName) {
+  return `
+    <article class="meeting-card">
+      <div class="meeting-head">
+        <div>
+          <strong>${escapeHtml(match.tour_name || tourDisplayName(tours.find((tour) => Number(tour.year) === Number(match.year))) || "Tour")}</strong>
+          <span>${escapeHtml(String(match.year || ""))} · Day ${escapeHtml(String(match.day || ""))} · Match ${escapeHtml(String(match.match_number || ""))}</span>
+        </div>
+        <b>${escapeHtml(match.score || "A/S")}</b>
+      </div>
+      <p class="meeting-course">${escapeHtml(courseNameForMatch(match))}</p>
+      <div class="meeting-meta">
+        <span>${escapeHtml(match.format || "Match")}</span>
+        <span>${escapeHtml(rivalTeamLine(match))}</span>
+      </div>
+      <div class="meeting-result">
+        <span>${escapeHtml(firstNameFromName(playerName))}</span>
+        <strong>${escapeHtml(playerMatchOutcome(match, playerName))}</strong>
+      </div>
+    </article>
+  `;
+}
+
+function starRowsForPlayer(playerName, rows = []) {
+  const winners = tourWinnerByYear(rows);
+  const profileRows = state.touristProfileRows.filter((row) => allPlayers.some((player) =>
+    player.player_name === playerName && Number(player.id) === Number(row.player_id)
+  ));
+  const profileByYear = profileRows.reduce((byYear, row) => {
+    const year = tours.find((tour) => Number(tour.supabaseId) === Number(row.tour_id))?.year;
+    if (year && !byYear[year]) byYear[year] = row;
+    return byYear;
+  }, {});
+  const years = [...new Set([
+    ...Object.keys(profileByYear).map(Number),
+    ...rows
+      .filter((match) => playerTeamInMatch(match, playerName))
+      .map((match) => Number(match.year))
+      .filter(Boolean),
+  ])].sort((a, b) => b - a);
+
+  return years
+    .map((year) => {
+      const winner = winners[year];
+      const playerMatch = rows.find((match) => Number(match.year) === Number(year) && playerTeamInMatch(match, playerName));
+      const resultTeam = playerMatch ? playerTeamInMatch(playerMatch, playerName) : "";
+      const teamName = profileByYear[year]?.team_name || resultTeam;
+      const stars = winner === "Half" ? 0.5 : winner && teamName === winner ? 1 : 0;
+      const tour = tours.find((item) => Number(item.year) === Number(year));
+      return { year, tourName: tourDisplayName(tour) || String(year), teamName, winner, stars };
+    })
+    .filter((row) => row.stars > 0);
+}
+
+function StarBreakdownRows(playerName, rows = []) {
+  const starRows = starRowsForPlayer(playerName, rows);
+  if (!starRows.length) return Card(`<p class="empty-state">No tour wins found.</p>`);
+  return `
+    <div class="stats-breakdown-list">
+      ${starRows.map((row) => `
+        <div class="stats-breakdown-row">
+          <span>${escapeHtml(row.tourName)} ${escapeHtml(String(row.year))}</span>
+          <strong>${escapeHtml(formatTeamPoints(row.stars))}</strong>
+          <small>${escapeHtml(row.teamName || "Team TBC")} · ${escapeHtml(row.winner === "Half" ? "Halved tour" : "Tour winners")}</small>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function rowsForRivals(rows = [], players = []) {
@@ -3742,7 +3839,7 @@ function formatHandicapChange(value) {
 }
 
 function mostImprovedHandicap(activeOnly = true) {
-  const pending = { name: "TBC - pending input of this year's handicaps", value: "", detail: "" };
+  const pending = { name: "TBC - pending input of this year's handicaps", value: "", detail: "", leaders: [] };
   const currentTour = currentStatsTour();
   const currentYear = Number(currentTour?.year);
   const currentTourId = Number(currentTour?.supabaseId);
@@ -3797,7 +3894,171 @@ function mostImprovedHandicap(activeOnly = true) {
     name: namesForLeaders(leaders),
     value: `-${formatHandicapChange(leader.drop)}`,
     detail: "handicap drop",
+    leaders,
   };
+}
+
+function statsDetailConfig(key, stats, context = {}) {
+  const configs = {
+    "most-stars": {
+      title: "Most Stars",
+      subtitle: "Tour wins",
+      leaders: context.tourStars?.leaders || [],
+      value: (record) => formatTeamPoints(record.stars || 0),
+      detail: (record) => `${formatTeamPoints(record.stars || 0)} tour wins`,
+      body: (record) => StarBreakdownRows(record.playerName, state.statsOverviewRows || []),
+    },
+    "highest-win": {
+      title: "Highest Win %",
+      subtitle: "Overall record",
+      leaders: stats.highestWinLeaders,
+      value: (record) => `${percentage(record.wins, record.matches)}%`,
+      detail: (record) => `${record.wins}/${record.matches}`,
+      body: (record) => StatsMatchList(record, "highest-win"),
+    },
+    "highest-fourball": {
+      title: "Highest Fourball Win %",
+      subtitle: "Fourball record",
+      leaders: stats.highestFourballLeaders,
+      value: (record) => `${percentage(record.fourballWins, record.fourballMatches)}%`,
+      detail: (record) => `${record.fourballWins}/${record.fourballMatches}`,
+      body: (record) => StatsMatchList(record, "highest-fourball"),
+    },
+    "highest-singles": {
+      title: "Highest Singles Win %",
+      subtitle: "Singles record",
+      leaders: stats.highestSinglesLeaders,
+      value: (record) => `${percentage(record.singlesWins, record.singlesMatches)}%`,
+      detail: (record) => `${record.singlesWins}/${record.singlesMatches}`,
+      body: (record) => StatsMatchList(record, "highest-singles"),
+    },
+    "most-points": {
+      title: "Most Points",
+      subtitle: "Total points record",
+      leaders: stats.mostPointsLeaders,
+      value: (record) => formatTeamPoints(record.points || 0),
+      detail: (record) => `${record.wins || 0} wins`,
+      body: (record) => StatsMatchList(record, "most-points"),
+    },
+    "most-matches": {
+      title: "Most Matches Played",
+      subtitle: "Appearance record",
+      leaders: stats.mostMatchesLeaders,
+      value: (record) => String(record.matches || 0),
+      detail: () => "matches",
+      body: (record) => StatsMatchList(record, "most-matches"),
+    },
+    "most-improved": {
+      title: "Most Improved",
+      subtitle: "Handicap movement",
+      leaders: context.mostImproved?.leaders || [],
+      value: (record) => `-${formatHandicapChange(record.drop)}`,
+      detail: () => "handicap drop",
+      body: (record) => `
+        <div class="stats-breakdown-list">
+          <div class="stats-breakdown-row">
+            <span>Previous handicap</span>
+            <strong>${escapeHtml(formatHandicapChange(record.previousHandicap))}</strong>
+          </div>
+          <div class="stats-breakdown-row">
+            <span>Current handicap</span>
+            <strong>${escapeHtml(formatHandicapChange(record.currentHandicap))}</strong>
+          </div>
+          <div class="stats-breakdown-row highlight">
+            <span>Total improvement</span>
+            <strong>-${escapeHtml(formatHandicapChange(record.drop))}</strong>
+          </div>
+        </div>
+      `,
+    },
+    "total-matches": {
+      title: "Total Matches Played",
+      subtitle: "All recorded matches",
+      leaders: [{ playerName: "All matches", matches: stats.totalMatches }],
+      value: () => String(stats.totalMatches),
+      detail: () => "matches",
+      body: () => TotalMatchesBreakdown(state.statsOverviewRows || []),
+    },
+  };
+  return configs[key] || null;
+}
+
+function StatsMatchList(record, key) {
+  const matches = rowsForPlayerStat(state.statsOverviewRows || [], record.playerName, key);
+  if (!matches.length) return Card(`<p class="empty-state">No matches found.</p>`);
+  return `
+    <div class="meeting-list">
+      ${matches.map((match) => OverviewPlayerMatchCard(match, record.playerName)).join("")}
+    </div>
+  `;
+}
+
+function TotalMatchesBreakdown(rows = []) {
+  const byYear = rows.reduce((groups, match) => {
+    const year = Number(match.year) || "Unknown";
+    groups[year] = (groups[year] || 0) + 1;
+    return groups;
+  }, {});
+  return `
+    <div class="stats-breakdown-list">
+      ${Object.entries(byYear)
+        .sort(([yearA], [yearB]) => Number(yearB) - Number(yearA))
+        .map(([year, count]) => {
+          const tour = tours.find((item) => Number(item.year) === Number(year));
+          return `
+            <div class="stats-breakdown-row">
+              <span>${escapeHtml(tourDisplayName(tour) || "Tour")} ${escapeHtml(String(year))}</span>
+              <strong>${escapeHtml(String(count))}</strong>
+              <small>${Number(count) === 1 ? "match" : "matches"}</small>
+            </div>
+          `;
+        }).join("")}
+    </div>
+  `;
+}
+
+function StatsDetailOverlay(stats, context = {}) {
+  const config = statsDetailConfig(state.statsOverlayKey, stats, context);
+  if (!config) return "";
+  const leaders = config.leaders || [];
+  const activeIndex = Math.min(Math.max(Number(state.statsOverlayIndex) || 0, 0), Math.max(leaders.length - 1, 0));
+  const active = leaders[activeIndex];
+  if (!active) return "";
+  const activeName = active.playerName || "All matches";
+
+  return `
+    <section class="rivals-overlay stats-detail-overlay" role="dialog" aria-label="${escapeHtml(config.title)} detail">
+      <div class="overview-feature-topbar rivals-overlay-topbar">
+        <button class="overview-feature-back" data-action="close-stats-detail" aria-label="Back to Stats overview">${icon("back")}</button>
+        <div>
+          <span>${escapeHtml(config.subtitle)}</span>
+          <h2>${escapeHtml(config.title)}</h2>
+        </div>
+      </div>
+      ${leaders.length > 1 ? `
+        <div class="rivals-tabs" role="tablist" aria-label="${escapeHtml(config.title)} leaders">
+          ${leaders.map((record, index) => `
+            <button
+              class="${index === activeIndex ? "active" : ""}"
+              data-action="select-stats-detail-leader"
+              data-index="${index}"
+              type="button"
+              role="tab"
+              aria-selected="${index === activeIndex ? "true" : "false"}"
+            >
+              ${escapeHtml(firstNameFromName(record.playerName || "All"))}
+            </button>
+          `).join("")}
+        </div>
+      ` : ""}
+      ${Card(`
+        <div class="data-row"><span>${escapeHtml(activeName)}</span><strong>${escapeHtml(config.value(active))}</strong></div>
+        <div class="data-row"><span>Detail</span><strong>${escapeHtml(config.detail(active))}</strong></div>
+      `, "rivals-summary-card")}
+      <h3 class="section-title">${state.statsOverlayKey === "total-matches" ? "Breakdown" : "Details"}</h3>
+      ${config.body(active)}
+    </section>
+  `;
 }
 
 function StatsOverview() {
@@ -3827,19 +4088,48 @@ function StatsOverview() {
       <button class="${state.statsActiveOnly ? "" : "active"}" data-action="set-active-nudgers" data-active="0">All Players</button>
     </div>
     <div class="leader-grid">
-      ${LeaderStat("Most Stars (Tour Wins)", tourStars.name, tourStars.value, tourStars.detail)}
-      ${LeaderStat("Highest Win %", highestWin.name, highestWin.value, highestWin.detail)}
-      ${LeaderStat("Highest Fourball Win %", highestFourball.name, highestFourball.value, highestFourball.detail)}
-      ${LeaderStat("Highest Singles Win %", highestSingles.name, highestSingles.value, highestSingles.detail)}
-      ${LeaderStat("Most Points", namesForLeaders(stats.mostPointsLeaders), formatTeamPoints(stats.mostPoints?.points || 0), `${stats.mostPoints?.wins || 0} wins`)}
-      ${LeaderStat("Most Matches Played", namesForLeaders(stats.mostMatchesLeaders), String(stats.mostMatches?.matches || 0), "matches")}
+      ${LeaderStat("Most Stars (Tour Wins)", tourStars.name, tourStars.value, tourStars.detail, {
+        action: "show-stats-detail",
+        detail: "most-stars",
+        disabled: !tourStars.leaders?.length,
+      })}
+      ${LeaderStat("Highest Win %", highestWin.name, highestWin.value, highestWin.detail, {
+        action: "show-stats-detail",
+        detail: "highest-win",
+        disabled: !stats.highestWinLeaders.length,
+      })}
+      ${LeaderStat("Highest Fourball Win %", highestFourball.name, highestFourball.value, highestFourball.detail, {
+        action: "show-stats-detail",
+        detail: "highest-fourball",
+        disabled: !stats.highestFourballLeaders.length,
+      })}
+      ${LeaderStat("Highest Singles Win %", highestSingles.name, highestSingles.value, highestSingles.detail, {
+        action: "show-stats-detail",
+        detail: "highest-singles",
+        disabled: !stats.highestSinglesLeaders.length,
+      })}
+      ${LeaderStat("Most Points", namesForLeaders(stats.mostPointsLeaders), formatTeamPoints(stats.mostPoints?.points || 0), `${stats.mostPoints?.wins || 0} wins`, {
+        action: "show-stats-detail",
+        detail: "most-points",
+        disabled: !stats.mostPointsLeaders.length,
+      })}
+      ${LeaderStat("Most Matches Played", namesForLeaders(stats.mostMatchesLeaders), String(stats.mostMatches?.matches || 0), "matches", {
+        action: "show-stats-detail",
+        detail: "most-matches",
+        disabled: !stats.mostMatchesLeaders.length,
+      })}
       ${LeaderStat("Rivals", stats.rivals.name, stats.rivals.value, stats.rivals.detail, {
         action: "show-rivals-detail",
         disabled: !stats.rivals.players.length,
       })}
-      ${LeaderStat("Most Improved", mostImproved.name, mostImproved.value, mostImproved.detail)}
+      ${LeaderStat("Most Improved", mostImproved.name, mostImproved.value, mostImproved.detail, {
+        action: "show-stats-detail",
+        detail: "most-improved",
+        disabled: !mostImproved.leaders?.length,
+      })}
       ${LeaderStat("Total Matches Played", String(stats.totalMatches), "")}
     </div>
+    ${state.statsOverlayKey ? StatsDetailOverlay(stats, { tourStars, mostImproved }) : ""}
     ${state.rivalsOverlayOpen ? RivalsOverlay(stats) : ""}
     ${OverviewLeaderboard(stats.records)}
   `;
@@ -4372,6 +4662,8 @@ app.addEventListener("click", (event) => {
     }
     state.openHeadToHeadPicker = null;
     state.openIndividualPicker = false;
+    state.rivalsOverlayOpen = false;
+    state.statsOverlayKey = "";
     state.homeMenuOpen = false;
   }
   if (action === "toggle-home-menu") {
@@ -4391,6 +4683,8 @@ app.addEventListener("click", (event) => {
     state.matchReportOpenYear = null;
     state.touristProfileOpen = false;
     state.touristProfileReturn = null;
+    state.rivalsOverlayOpen = false;
+    state.statsOverlayKey = "";
     state.homeMenuOpen = false;
     if (state.tab === "media") loadMediaLibrary();
     if (state.tab === "hall-of-fame") loadHallOfFame();
@@ -4592,6 +4886,7 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.statSubTab = target.dataset.tab;
     state.rivalsOverlayOpen = false;
+    state.statsOverlayKey = "";
     if (state.statSubTab === "Overview") loadStatsOverview();
     if (state.statSubTab === "Head-to-Head" && allPlayers.length) loadHeadToHeadMatches();
     if (state.statSubTab === "Individual" && allPlayers.length) loadIndividualMatches();
@@ -4599,6 +4894,18 @@ app.addEventListener("click", (event) => {
   if (action === "set-active-nudgers") {
     state.statsActiveOnly = target.dataset.active !== "0";
     state.rivalsOverlayOpen = false;
+    state.statsOverlayKey = "";
+  }
+  if (action === "show-stats-detail") {
+    state.statsOverlayKey = target.dataset.detail || "";
+    state.statsOverlayIndex = 0;
+    state.rivalsOverlayOpen = false;
+  }
+  if (action === "select-stats-detail-leader") {
+    state.statsOverlayIndex = Number(target.dataset.index) || 0;
+  }
+  if (action === "close-stats-detail") {
+    state.statsOverlayKey = "";
   }
   if (action === "show-rivals-detail") {
     const stats = buildOverviewStats(state.statsOverviewRows || [], state.statsActiveOnly);
@@ -4606,6 +4913,7 @@ app.addEventListener("click", (event) => {
       state.selectedRivals = stats.rivals.players;
       state.selectedRivalPairs = stats.rivals.pairs;
       state.activeRivalPairIndex = 0;
+      state.statsOverlayKey = "";
       state.rivalsOverlayOpen = true;
     }
   }
