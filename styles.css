@@ -598,6 +598,84 @@ svg {
   height: 16px;
 }
 
+.home-app-update {
+  width: min(100%, 344px);
+  margin: 0 auto 14px;
+  padding: 14px;
+  background:
+    linear-gradient(145deg, rgba(248, 216, 137, .16), rgba(248, 242, 223, .05) 34%, rgba(3, 19, 13, .18)),
+    rgba(8, 37, 27, .94);
+  border: 1px solid rgba(208, 173, 103, .58);
+  border-radius: 12px;
+  box-shadow: 0 18px 34px rgba(1, 9, 7, .36), inset 0 1px 0 rgba(248, 242, 223, .1);
+  color: var(--cream);
+}
+
+.home-app-update-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid rgba(208, 173, 103, .22);
+}
+
+.home-app-update-badge {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  background: linear-gradient(135deg, #f4d889, #c59a42);
+  border-radius: 999px;
+  box-shadow: 0 10px 18px rgba(1, 9, 7, .28);
+  font-size: 20px;
+}
+
+.home-app-update-header span:not(.home-app-update-badge) {
+  display: block;
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .8px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.home-app-update-header h2 {
+  margin: 3px 0 0;
+  color: var(--cream);
+  font-size: 22px;
+  line-height: 1.05;
+}
+
+.home-app-update-list {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.home-app-update-list article {
+  padding: 11px;
+  background: rgba(3, 19, 13, .38);
+  border: 1px solid rgba(248, 216, 137, .2);
+  border-radius: 8px;
+}
+
+.home-app-update-list strong {
+  display: block;
+  color: var(--gold-soft);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.home-app-update-list p {
+  margin: 6px 0 0;
+  color: rgba(248, 242, 223, .9);
+  font-size: 12px;
+  line-height: 1.42;
+  text-transform: none;
+}
+
 .next-tour,
 .hero-card,
 .tour-card,

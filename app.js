@@ -1168,6 +1168,37 @@ function UpdateAvailableBanner() {
   `;
 }
 
+const APP_UPDATE_NOTICE_EXPIRES_AT = new Date("2026-06-20T23:59:59+01:00");
+
+function shouldShowAppUpdateNotice(now = new Date()) {
+  return now <= APP_UPDATE_NOTICE_EXPIRES_AT;
+}
+
+function HomeAppUpdateNotice() {
+  if (!shouldShowAppUpdateNotice()) return "";
+  return `
+    <section class="home-app-update" aria-label="App update">
+      <div class="home-app-update-header">
+        <span class="home-app-update-badge">📢</span>
+        <div>
+          <span>App Update</span>
+          <h2>What's New</h2>
+        </div>
+      </div>
+      <div class="home-app-update-list">
+        <article>
+          <strong>🏆 Hall of Fame</strong>
+          <p>Record legendary moments that deserve a permanent place in Nudgers folklore. Find it under ☰ Menu on the Home tab.</p>
+        </article>
+        <article>
+          <strong>🎲 Random Nudger Generator</strong>
+          <p>Need to pick a Nudger for rooms or forfeits. Let fate decide. Found on the THIS TOUR tab.</p>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
 function HomeRefreshButton() {
   return `<button class="home-refresh-btn" data-action="refresh-app-update" type="button" aria-label="Refresh app">${icon("refresh")}</button>`;
 }
@@ -1544,6 +1575,7 @@ function Home() {
         ${daysUntilNext !== null ? `<b>${daysUntilNext} days until ${escapeHtml(tourDisplayName(next))}</b>` : ""}
       </div>
     </section>
+    ${HomeAppUpdateNotice()}
     <section class="next-tour" style="background-image: linear-gradient(180deg, rgba(255,255,255,.05), rgba(3,19,13,.54)), url('${next.image}')">
       <span>Next Tour</span>
       <h2>${escapeHtml(stripTourFlags(next.title))}</h2>
