@@ -1046,6 +1046,10 @@ let state = {
   statsOverviewError: "",
   statsActiveOnly: true,
   statsOverviewSortKey: "points",
+  rivalsOverlayOpen: false,
+  selectedRivals: [],
+  selectedRivalPairs: [],
+  activeRivalPairIndex: 0,
   defendingChampions: null,
   defendingChampionsLoading: false,
   teamTourWins: null,
@@ -2123,6 +2127,10 @@ function currentTourPageYear() {
 
 function firstNameForPlayer(player = {}) {
   return String(player.player_name || "Nudger").trim().split(/\s+/)[0] || "Nudger";
+}
+
+function firstNameFromName(name = "") {
+  return String(name || "Nudger").trim().split(/\s+/)[0] || "Nudger";
 }
 
 function currentTourNudgers() {
@@ -3468,6 +3476,51 @@ function tourStarsByPlayer(rows = [], activeOnly = true) {
     }, {});
 }
 
+function addRivalPair(pairs, playerA, playerB) {
+  if (!playerA || !playerB || playerA === playerB) return;
+  const names = [playerA, playerB].sort((a, b) => a.localeCompare(b));
+  const key = names.join("::");
+  if (!pairs[key]) {
+    pairs[key] = {
+      players: names,
+      matches: 0,
+    };
+  }
+  pairs[key].matches += 1;
+}
+
+function mostPlayedRivals(rows = [], activeOnly = true) {
+  const allowedPlayers = activeOnly ? activePlayerNames() : null;
+  const pairs = {};
+
+  rows.forEach((match) => {
+    const crocs = splitTeamNames(match.crocs_team).filter((playerName) => !allowedPlayers || allowedPlayers.has(playerName));
+    const foz = splitTeamNames(match.foz_team).filter((playerName) => !allowedPlayers || allowedPlayers.has(playerName));
+    crocs.forEach((crocsPlayer) => {
+      foz.forEach((fozPlayer) => addRivalPair(pairs, crocsPlayer, fozPlayer));
+    });
+  });
+
+  const leaders = leadersBy(
+    Object.values(pairs),
+    (pair) => pair.matches,
+    (a, b) => a.players.join(" & ").localeCompare(b.players.join(" & "))
+  );
+  const leader = leaders[0];
+
+  if (!leader) {
+    return { name: "N/A", value: "No matches", detail: "", players: [], pairs: [] };
+  }
+
+  return {
+    name: leaders.map((pair) => pair.players.join(" vs ")).join(", "),
+    value: String(leader.matches),
+    detail: leader.matches === 1 ? "match" : "matches",
+    players: leader.players,
+    pairs: leaders.map((pair) => pair.players),
+  };
+}
+
 function buildOverviewStats(rows, activeOnly = true) {
   const recordsByPlayer = {};
   const allowedPlayers = activeOnly ? activePlayerNames() : null;
@@ -3497,6 +3550,7 @@ function buildOverviewStats(rows, activeOnly = true) {
   const mostWinsLeaders = leadersBy(records, (record) => record.wins, (a, b) => b.matches - a.matches);
   const mostPointsLeaders = leadersBy(records, (record) => record.points, (a, b) => b.wins - a.wins);
   const mostMatchesLeaders = leadersBy(records, (record) => record.matches, (a, b) => b.wins - a.wins);
+  const rivals = mostPlayedRivals(rows, activeOnly);
 
   return {
     highestWin,
@@ -3511,24 +3565,29 @@ function buildOverviewStats(rows, activeOnly = true) {
     mostWinsLeaders,
     mostPointsLeaders,
     mostMatchesLeaders,
+    rivals,
     records,
     totalMatches: rows.length,
   };
 }
 
-function LeaderStat(label, name, value, detail = "") {
+function LeaderStat(label, name, value, detail = "", options = {}) {
   const nameText = String(name || "N/A");
   const nameLength = nameText.length;
   const nameCount = nameText.split(/\s*(?:,|\/|&)\s*/).filter(Boolean).length;
   const compactClass = nameLength > 34 || nameCount > 1 ? " compact" : "";
   const tightClass = nameLength > 48 || nameCount > 3 ? " tight" : "";
+  const Tag = options.action ? "button" : "article";
+  const attrs = options.action
+    ? ` type="button" data-action="${escapeHtml(options.action)}"${options.disabled ? " disabled" : ""}`
+    : "";
 
   return `
-    <article class="leader-stat">
+    <${Tag} class="leader-stat${options.action ? " clickable" : ""}"${attrs}>
       <span>${label}</span>
       <strong class="leader-name${compactClass}${tightClass}">${escapeHtml(nameText)}</strong>
       <div class="leader-value"><b>${escapeHtml(value)}</b>${detail ? `<small>(${escapeHtml(detail)})</small>` : ""}</div>
-    </article>
+    </${Tag}>
   `;
 }
 
@@ -3567,6 +3626,109 @@ function mostTourStars(rows = [], activeOnly = true) {
     value: formatTeamPoints(leaders[0]?.stars || 0),
     detail: "tour wins",
   };
+}
+
+function rowsForRivals(rows = [], players = []) {
+  const [playerA, playerB] = players;
+  if (!playerA || !playerB) return [];
+
+  return rows.filter((match) => {
+    const crocs = splitTeamNames(match.crocs_team);
+    const foz = splitTeamNames(match.foz_team);
+    return (
+      (crocs.includes(playerA) && foz.includes(playerB)) ||
+      (crocs.includes(playerB) && foz.includes(playerA))
+    );
+  });
+}
+
+function rivalTeamLine(match) {
+  const crocs = compactTeamNames(match.crocs_team);
+  const foz = compactTeamNames(match.foz_team);
+  return `${crocs || "Crocs"} vs ${foz || "Foz"}`;
+}
+
+function rivalWinner(match, players = []) {
+  if (match.result === "Half") return "Halved";
+  const winningTeam = String(match.result || "").replace("Win Team ", "");
+  if (winningTeam === "Crocs" || winningTeam === "Foz") {
+    const winningNames = splitTeamNames(winningTeam === "Crocs" ? match.crocs_team : match.foz_team);
+    const winner = players.find((playerName) => winningNames.includes(playerName));
+    if (winner) return firstNameFromName(winner);
+  }
+  if (match.winner_name) return firstNameFromName(match.winner_name);
+  return match.result || "N/A";
+}
+
+function RivalMatchCard(match, players = []) {
+  return `
+    <article class="meeting-card">
+      <div class="meeting-head">
+        <div>
+          <strong>${escapeHtml(match.tour_name || tourDisplayName(tours.find((tour) => Number(tour.year) === Number(match.year))) || "Tour")}</strong>
+          <span>${escapeHtml(String(match.year || ""))} · Day ${escapeHtml(String(match.day || ""))} · Match ${escapeHtml(String(match.match_number || ""))}</span>
+        </div>
+        <b>${escapeHtml(match.score || "A/S")}</b>
+      </div>
+      <p class="meeting-course">${escapeHtml(courseNameForMatch(match))}</p>
+      <div class="meeting-meta">
+        <span>${escapeHtml(match.format || "Match")}</span>
+        <span>${escapeHtml(rivalTeamLine(match))}</span>
+      </div>
+      <div class="meeting-result">
+        <span>Result</span>
+        <strong>${escapeHtml(rivalWinner(match, players))}</strong>
+      </div>
+    </article>
+  `;
+}
+
+function RivalsOverlay(stats) {
+  const pairs = state.selectedRivalPairs.length ? state.selectedRivalPairs : stats.rivals.pairs;
+  const firstPair = pairs[0] || stats.rivals.players;
+  const title = pairs.length > 1 ? "Top rivalries" : firstPair.length === 2 ? firstPair.join(" vs ") : "Rivals";
+  const activeIndex = Math.min(Math.max(Number(state.activeRivalPairIndex) || 0, 0), Math.max(pairs.length - 1, 0));
+  const activePair = pairs[activeIndex] || firstPair;
+  const matches = rowsForRivals(state.statsOverviewRows || [], activePair);
+
+  return `
+    <section class="rivals-overlay" role="dialog" aria-label="Rivals match history">
+      <div class="overview-feature-topbar rivals-overlay-topbar">
+        <button class="overview-feature-back" data-action="back-stats-overview" aria-label="Back to Stats overview">${icon("back")}</button>
+        <div>
+          <span>Rivals</span>
+          <h2>${escapeHtml(title)}</h2>
+        </div>
+      </div>
+      ${pairs.length > 1 ? `
+        <div class="rivals-tabs" role="tablist" aria-label="Top rivalries">
+          ${pairs.map((players, index) => `
+            <button
+              class="${index === activeIndex ? "active" : ""}"
+              data-action="select-rival-pair"
+              data-index="${index}"
+              type="button"
+              role="tab"
+              aria-selected="${index === activeIndex ? "true" : "false"}"
+            >
+              ${escapeHtml(players.map((name) => firstNameFromName(name)).join(" vs "))}
+            </button>
+          `).join("")}
+        </div>
+      ` : ""}
+      ${Card(`
+        <div class="data-row"><span>Matches played</span><strong>${matches.length}</strong></div>
+      `, "rivals-summary-card")}
+      <h3 class="section-title">Match History</h3>
+      ${activePair.length ? `
+        <div class="meeting-list">
+          <section class="rivals-pair-section">
+            ${matches.map((match) => RivalMatchCard(match, activePair)).join("")}
+          </section>
+        </div>
+      ` : Card(`<p class="empty-state">No rival matches found.</p>`)}
+    </section>
+  `;
 }
 
 function currentStatsTour() {
@@ -3671,9 +3833,14 @@ function StatsOverview() {
       ${LeaderStat("Highest Singles Win %", highestSingles.name, highestSingles.value, highestSingles.detail)}
       ${LeaderStat("Most Points", namesForLeaders(stats.mostPointsLeaders), formatTeamPoints(stats.mostPoints?.points || 0), `${stats.mostPoints?.wins || 0} wins`)}
       ${LeaderStat("Most Matches Played", namesForLeaders(stats.mostMatchesLeaders), String(stats.mostMatches?.matches || 0), "matches")}
+      ${LeaderStat("Rivals", stats.rivals.name, stats.rivals.value, stats.rivals.detail, {
+        action: "show-rivals-detail",
+        disabled: !stats.rivals.players.length,
+      })}
       ${LeaderStat("Most Improved", mostImproved.name, mostImproved.value, mostImproved.detail)}
       ${LeaderStat("Total Matches Played", String(stats.totalMatches), "")}
     </div>
+    ${state.rivalsOverlayOpen ? RivalsOverlay(stats) : ""}
     ${OverviewLeaderboard(stats.records)}
   `;
 }
@@ -4424,12 +4591,29 @@ app.addEventListener("click", (event) => {
   if (action === "stat-tab") {
     state.restoredScrollTop = 0;
     state.statSubTab = target.dataset.tab;
+    state.rivalsOverlayOpen = false;
     if (state.statSubTab === "Overview") loadStatsOverview();
     if (state.statSubTab === "Head-to-Head" && allPlayers.length) loadHeadToHeadMatches();
     if (state.statSubTab === "Individual" && allPlayers.length) loadIndividualMatches();
   }
   if (action === "set-active-nudgers") {
     state.statsActiveOnly = target.dataset.active !== "0";
+    state.rivalsOverlayOpen = false;
+  }
+  if (action === "show-rivals-detail") {
+    const stats = buildOverviewStats(state.statsOverviewRows || [], state.statsActiveOnly);
+    if (stats.rivals.players.length) {
+      state.selectedRivals = stats.rivals.players;
+      state.selectedRivalPairs = stats.rivals.pairs;
+      state.activeRivalPairIndex = 0;
+      state.rivalsOverlayOpen = true;
+    }
+  }
+  if (action === "select-rival-pair") {
+    state.activeRivalPairIndex = Number(target.dataset.index) || 0;
+  }
+  if (action === "back-stats-overview") {
+    state.rivalsOverlayOpen = false;
   }
   if (action === "overview-sort") {
     const content = document.querySelector(".content");
