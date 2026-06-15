@@ -854,7 +854,15 @@ async function loadSupabaseData() {
     if (state.tab === "this-tour" && ["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) {
       loadTourProfiles(tours[0]?.supabaseId);
     }
-    if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel && state.thisTourOverviewPanel !== "scorecards") {
+    if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel === "random-nudger-generator") {
+      loadTourProfiles(tours[0]?.supabaseId);
+    }
+    if (
+      state.tab === "this-tour" &&
+      state.detailSubTab === "Overview" &&
+      state.thisTourOverviewPanel &&
+      !["scorecards", "random-nudger-generator"].includes(state.thisTourOverviewPanel)
+    ) {
       loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
     }
   } catch (error) {
@@ -933,6 +941,18 @@ let state = {
   tourPageError: "",
   tourPageEditingKey: null,
   tourPageDrafts: {},
+  randomNudgerDraw: {
+    mode: "pairs",
+    started: false,
+    order: [],
+    revealed: [],
+    shuffling: false,
+    slot: {
+      spinning: false,
+      currentPlayerId: null,
+      selectedPlayerId: null,
+    },
+  },
   homeMenuOpen: false,
   birthdayOverlayDismissed: false,
   restoredScrollTop: 0,
@@ -944,6 +964,7 @@ let waitingServiceWorker = null;
 let refreshingForUpdate = false;
 let serviceWorkerRegistration = null;
 let lastAutoUpdateCheckAt = 0;
+let randomNudgerSpinTimer = null;
 
 function icon(name) {
   const icons = {
@@ -969,6 +990,7 @@ function icon(name) {
     suitcase: '<path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1"/><rect x="5" y="6" width="14" height="15" rx="2"/><path d="M9 6v15M15 6v15"/>',
     swap: '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
     refresh: '<path d="M21 12a9 9 0 0 1-15.4 6.4L3 16"/><path d="M3 21v-5h5"/><path d="M3 12A9 9 0 0 1 18.4 5.6L21 8"/><path d="M21 3v5h-5"/>',
+    shuffle: '<path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/>',
     logout: '<path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M14 4h4a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-4"/>',
   };
   return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.home}</svg>`;
@@ -1724,6 +1746,7 @@ const thisTourOverviewActions = [
   ["Travel Info", "plane", "travel-info"],
   ["Tee Times", "flag", "tee-times"],
   ["Scorecards", "badge", "scorecards"],
+  ["Random Nudger Generator", "shuffle", "random-nudger-generator"],
 ];
 
 function formatOverviewFeatureTitle(view) {
@@ -1732,6 +1755,235 @@ function formatOverviewFeatureTitle(view) {
 
 function currentTourPageYear() {
   return Number(state.thisTourOverviewYear || tours[0]?.year);
+}
+
+function firstNameForPlayer(player = {}) {
+  return String(player.player_name || "Nudger").trim().split(/\s+/)[0] || "Nudger";
+}
+
+function currentTourNudgers() {
+  const tour = tours[0];
+  const rows = state.tourProfilesByTourId[tour?.supabaseId] || [];
+  const onTourIds = new Set(
+    rows
+      .filter((row) => row.on_tour === true || row.on_tour === "true")
+      .map((row) => Number(row.player_id))
+      .filter(Boolean)
+  );
+
+  return allPlayers
+    .filter((player) => onTourIds.has(Number(player.id)))
+    .sort((a, b) => a.player_name.localeCompare(b.player_name));
+}
+
+function shuffledIds(playersList = []) {
+  const ids = playersList.map((player) => Number(player.id));
+  for (let index = ids.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [ids[index], ids[swapIndex]] = [ids[swapIndex], ids[index]];
+  }
+  return ids;
+}
+
+function emptyRandomNudgerDraw(mode = state.randomNudgerDraw?.mode || "pairs") {
+  return {
+    mode,
+    started: false,
+    order: [],
+    revealed: [],
+    shuffling: false,
+    slot: {
+      spinning: false,
+      currentPlayerId: null,
+      selectedPlayerId: null,
+    },
+  };
+}
+
+function resetRandomNudgerDraw(playersList = currentTourNudgers()) {
+  state.randomNudgerDraw = {
+    ...emptyRandomNudgerDraw("pairs"),
+    started: true,
+    order: shuffledIds(playersList),
+    revealed: [],
+    shuffling: true,
+  };
+}
+
+function RandomNudgerCard(player, index) {
+  const draw = state.randomNudgerDraw;
+  const started = draw.started;
+  const revealed = !started || draw.revealed.includes(Number(player.id));
+  const orderIndex = started ? draw.order.indexOf(Number(player.id)) : index;
+  const headshot = headshotForPlayer(player);
+  const firstName = firstNameForPlayer(player);
+
+  return `
+    <button
+      class="random-nudger-card ${revealed ? "revealed" : "covered"} ${draw.shuffling && started ? "shuffling" : ""}"
+      data-action="reveal-random-nudger"
+      data-player-id="${player.id}"
+      style="order: ${orderIndex < 0 ? index : orderIndex}; --shuffle-index: ${index % 7};"
+      ${revealed ? "disabled" : ""}
+      aria-label="${revealed ? escapeHtml(firstName) : "Reveal Nudger"}"
+    >
+      <span class="random-nudger-inner">
+        <span class="random-nudger-face">
+          <span class="random-nudger-photo">
+            ${headshot ? `<img src="${headshot}" alt="${escapeHtml(player.player_name)}" />` : `<b>${escapeHtml(getInitials(player.player_name))}</b>`}
+          </span>
+          <strong>${escapeHtml(firstName)}</strong>
+        </span>
+        <span class="random-nudger-back">
+          <span><img src="/assets/icons/app-logo.png" alt="" aria-hidden="true" /></span>
+        </span>
+      </span>
+    </button>
+  `;
+}
+
+function RandomNudgerModeTabs(mode) {
+  return `
+    <div class="random-nudger-tabs" role="tablist" aria-label="Random Nudger mode">
+      ${[
+        ["pairs", "Pairs"],
+        ["individual", "Individual"],
+      ].map(([id, label]) => `
+        <button
+          class="${mode === id ? "active" : ""}"
+          data-action="set-random-nudger-mode"
+          data-mode="${id}"
+          role="tab"
+          aria-selected="${mode === id ? "true" : "false"}"
+        >${label}</button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function RandomNudgerPairs(playersList) {
+  const draw = state.randomNudgerDraw;
+  return `
+    <div class="random-nudger-controls">
+      <button class="random-nudger-start" data-action="start-random-nudger-draw">
+        ${draw.started ? "Shuffle Again" : "Start"}
+      </button>
+      ${draw.started ? `<button class="random-nudger-reset" data-action="reset-random-nudger-draw">Reset</button>` : ""}
+    </div>
+    <div class="random-nudger-grid" aria-live="polite">
+      ${playersList.map(RandomNudgerCard).join("")}
+    </div>
+  `;
+}
+
+function RandomNudgerSlotFace(player) {
+  if (!player) {
+    return `
+      <div class="random-slot-placeholder">
+        ${icon("shuffle")}
+      </div>
+    `;
+  }
+
+  const headshot = headshotForPlayer(player);
+  return `
+    <div class="random-slot-face">
+      <span class="random-slot-photo">
+        ${headshot ? `<img src="${headshot}" alt="${escapeHtml(player.player_name)}" />` : `<b>${escapeHtml(getInitials(player.player_name))}</b>`}
+      </span>
+      <strong>${escapeHtml(firstNameForPlayer(player))}</strong>
+    </div>
+  `;
+}
+
+function RandomNudgerIndividual(playersList) {
+  const slot = state.randomNudgerDraw.slot || {};
+  const shownPlayer =
+    getPlayerById(slot.currentPlayerId) ||
+    getPlayerById(slot.selectedPlayerId) ||
+    playersList[0];
+
+  return `
+    <div class="random-slot-stage ${slot.spinning ? "spinning" : ""} ${slot.selectedPlayerId ? "settled" : ""}">
+      <div class="random-slot-window" aria-live="polite">
+        ${RandomNudgerSlotFace(shownPlayer)}
+      </div>
+      <button class="random-nudger-start random-slot-start" data-action="choose-random-nudger" ${slot.spinning ? "disabled" : ""}>
+        ${slot.spinning ? "Choosing..." : "Choose Nudger"}
+      </button>
+    </div>
+  `;
+}
+
+function RandomNudgerGenerator() {
+  const tour = tours[0];
+  const playersList = currentTourNudgers();
+  const draw = state.randomNudgerDraw;
+  const mode = draw.mode || "pairs";
+
+  if (state.tourProfilesLoadingTourId === tour?.supabaseId) {
+    return Card(`<p class="empty-state">Loading Nudgers...</p>`);
+  }
+
+  if (state.tourProfilesError) {
+    return Card(`<p class="empty-state">${escapeHtml(state.tourProfilesError)}</p>`);
+  }
+
+  if (!playersList.length) {
+    return Card(`<p class="empty-state">No Nudgers found for this tour.</p>`);
+  }
+
+  return `
+    <div class="random-nudger-stage ${draw.started ? "is-started" : "is-ready"}">
+      ${RandomNudgerModeTabs(mode)}
+      ${mode === "individual" ? RandomNudgerIndividual(playersList) : RandomNudgerPairs(playersList)}
+    </div>
+  `;
+}
+
+function startRandomNudgerSlot(playersList = currentTourNudgers()) {
+  if (!playersList.length) return;
+  if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
+
+  const order = shuffledIds(playersList);
+  const totalSteps = Math.max(34, playersList.length * 2 + 10);
+  let step = 0;
+
+  state.randomNudgerDraw = {
+    ...emptyRandomNudgerDraw("individual"),
+    slot: {
+      spinning: true,
+      currentPlayerId: order[0],
+      selectedPlayerId: null,
+    },
+  };
+  render();
+  persistRoute();
+
+  const tick = () => {
+    const progress = step / totalSteps;
+    const playerId = order[step % order.length];
+    state.randomNudgerDraw.slot.currentPlayerId = playerId;
+    render();
+
+    if (step >= totalSteps) {
+      state.randomNudgerDraw.slot = {
+        spinning: false,
+        currentPlayerId: playerId,
+        selectedPlayerId: playerId,
+      };
+      randomNudgerSpinTimer = null;
+      render();
+      persistRoute();
+      return;
+    }
+
+    step += 1;
+    const delay = 38 + Math.round(progress * progress * 250);
+    randomNudgerSpinTimer = window.setTimeout(tick, delay);
+  };
+
+  randomNudgerSpinTimer = window.setTimeout(tick, 42);
 }
 
 function formatTourPageText(text = "") {
@@ -1936,6 +2188,21 @@ function ThisTourOverviewFeature() {
   const pageKey = state.thisTourOverviewPanel;
   const year = currentTourPageYear();
   const title = formatOverviewFeatureTitle(pageKey);
+
+  if (pageKey === "random-nudger-generator") {
+    return `
+      <section class="overview-feature-screen random-nudger-screen">
+        <div class="overview-feature-topbar">
+          <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
+        </div>
+        <div class="cms-page-head">
+          <span class="eyebrow">${escapeHtml(tourDisplayName(tours[0]))}</span>
+          <h1>${escapeHtml(title)}</h1>
+        </div>
+        <div class="overview-feature-body">${RandomNudgerGenerator()}</div>
+      </section>
+    `;
+  }
 
   if (pageKey === "scorecards") {
     return `
@@ -3527,6 +3794,8 @@ app.addEventListener("click", (event) => {
   }
   const action = target.dataset.action;
   if (action === "tab") {
+    if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
+    randomNudgerSpinTimer = null;
     state.restoredScrollTop = 0;
     state.tab = target.dataset.tab;
     state.detailTour = null;
@@ -3599,12 +3868,16 @@ app.addEventListener("click", (event) => {
     window.location.reload();
   }
   if (action === "back") {
+    if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
+    randomNudgerSpinTimer = null;
     state.restoredScrollTop = 0;
     state.detailTour = null;
     state.detailSubTab = "Overview";
     state.matchReportOpenYear = null;
   }
   if (action === "detail-subtab") {
+    if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
+    randomNudgerSpinTimer = null;
     state.restoredScrollTop = 0;
     state.detailSubTab = target.dataset.tab;
     state.thisTourOverviewPanel = "";
@@ -3633,13 +3906,20 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
     state.thisTourOverviewPanel = target.dataset.view;
-    if (state.thisTourOverviewPanel !== "scorecards") {
+    if (state.thisTourOverviewPanel === "random-nudger-generator") {
+      if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
+      randomNudgerSpinTimer = null;
+      state.randomNudgerDraw = emptyRandomNudgerDraw(state.randomNudgerDraw?.mode || "pairs");
+      loadTourProfiles(tours[0]?.supabaseId);
+    } else if (state.thisTourOverviewPanel !== "scorecards") {
       loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
     }
   }
   if (action === "overview-back") {
     state.restoredScrollTop = 0;
     state.thisTourOverviewPanel = "";
+    if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
+    randomNudgerSpinTimer = null;
   }
   if (action === "edit-tour-page") {
     const year = currentTourPageYear();
@@ -3673,6 +3953,39 @@ app.addEventListener("click", (event) => {
       state.tourPageSavedKey = null;
     }
     saveTourPage(year, pageKey);
+  }
+  if (action === "start-random-nudger-draw") {
+    if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
+    randomNudgerSpinTimer = null;
+    resetRandomNudgerDraw();
+    render();
+    persistRoute();
+    window.setTimeout(() => {
+      state.randomNudgerDraw.shuffling = false;
+      render();
+      persistRoute();
+    }, 900);
+    return;
+  }
+  if (action === "set-random-nudger-mode") {
+    if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
+    randomNudgerSpinTimer = null;
+    state.randomNudgerDraw = emptyRandomNudgerDraw(target.dataset.mode || "pairs");
+  }
+  if (action === "reset-random-nudger-draw") {
+    state.randomNudgerDraw = emptyRandomNudgerDraw("pairs");
+  }
+  if (action === "reveal-random-nudger") {
+    const playerId = Number(target.dataset.playerId);
+    if (state.randomNudgerDraw.started && playerId && !state.randomNudgerDraw.revealed.includes(playerId)) {
+      const content = document.querySelector(".content");
+      state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
+      state.randomNudgerDraw.revealed = [...state.randomNudgerDraw.revealed, playerId];
+    }
+  }
+  if (action === "choose-random-nudger") {
+    startRandomNudgerSlot();
+    return;
   }
   if (action === "stat-tab") {
     state.restoredScrollTop = 0;
