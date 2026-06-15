@@ -670,6 +670,143 @@ async function loadStatsOverview() {
   }
 }
 
+function normaliseHallOfFameRow(row = {}) {
+  return {
+    ...row,
+    id: row.id,
+    year: row.year ?? "",
+    commentary: row.commentary || "",
+  };
+}
+
+function sortedHallOfFameRows(rows = []) {
+  return [...rows].sort((a, b) => {
+    const yearA = Number(a.year);
+    const yearB = Number(b.year);
+    if (Number.isFinite(yearA) && Number.isFinite(yearB) && yearA !== yearB) return yearB - yearA;
+    return String(a.commentary || "").localeCompare(String(b.commentary || ""));
+  });
+}
+
+async function loadHallOfFame({ force = false } = {}) {
+  if ((!force && state.hallOfFameLoaded) || state.hallOfFameLoading) return;
+
+  state.hallOfFameLoading = true;
+  state.hallOfFameError = "";
+  render();
+
+  try {
+    const rows = await supabaseFetch("hall_of_fame?select=id,year,commentary&order=year.desc");
+    state.hallOfFameRows = sortedHallOfFameRows((Array.isArray(rows) ? rows : []).map(normaliseHallOfFameRow));
+    state.hallOfFameLoaded = true;
+  } catch (error) {
+    console.warn(error);
+    state.hallOfFameError = "Could not load Hall of Fame.";
+  } finally {
+    state.hallOfFameLoading = false;
+    render();
+  }
+}
+
+function hallOfFamePayload(year, commentary) {
+  const yearValue = String(year || "").trim();
+  const parsedYear = Number(yearValue);
+  return {
+    year: yearValue && Number.isFinite(parsedYear) ? parsedYear : null,
+    commentary: String(commentary || "").trim(),
+  };
+}
+
+async function hallOfFameWrite({ method, id = "", body }) {
+  const query = id ? `?id=${encodeURIComponent(id)}` : "";
+  const response = await fetch(`/api/hall-of-fame${query}`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    if ([405, 501].includes(response.status) && ["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+      const path = id ? `hall_of_fame?id=eq.${encodeURIComponent(id)}` : "hall_of_fame";
+      return supabaseWrite(path, { method, body });
+    }
+    throw new Error(data?.error || `Hall of Fame write failed: ${response.status}`);
+  }
+  return data;
+}
+
+async function addHallOfFameRow() {
+  const yearInput = document.querySelector("[data-hof-new-year]");
+  const commentaryInput = document.querySelector("[data-hof-new-commentary]");
+  const payload = hallOfFamePayload(yearInput?.value, commentaryInput?.value);
+
+  if (!payload.year && !payload.commentary) return;
+
+  state.hallOfFameSavingId = "new";
+  state.hallOfFameError = "";
+  render();
+
+  try {
+    const rows = await hallOfFameWrite({ method: "POST", body: payload });
+    const created = rows?.[0];
+    if (created) {
+      state.hallOfFameRows = sortedHallOfFameRows([
+        normaliseHallOfFameRow(created),
+        ...state.hallOfFameRows,
+      ]);
+      state.hallOfFameEditingId = null;
+      state.hallOfFameAdding = false;
+    }
+  } catch (error) {
+    console.warn(error);
+    state.hallOfFameError = error.message || "Could not add Hall of Fame row.";
+  } finally {
+    state.hallOfFameSavingId = null;
+    render();
+  }
+}
+
+function hallOfFameDraftForRow(row) {
+  const key = String(row.id);
+  return state.hallOfFameDrafts[key] || {
+    year: row.year ?? "",
+    commentary: row.commentary || "",
+  };
+}
+
+async function saveHallOfFameRow(rowId) {
+  const row = state.hallOfFameRows.find((item) => String(item.id) === String(rowId));
+  if (!row || state.hallOfFameSavingId) return;
+
+  const draft = hallOfFameDraftForRow(row);
+  const payload = hallOfFamePayload(draft.year, draft.commentary);
+  if (Number(row.year || 0) === Number(payload.year || 0) && String(row.commentary || "") === payload.commentary) return;
+
+  state.hallOfFameSavingId = rowId;
+  state.hallOfFameError = "";
+  render();
+
+  try {
+    const rows = await hallOfFameWrite({
+      method: "PATCH",
+      id: rowId,
+      body: payload,
+    });
+    const saved = normaliseHallOfFameRow(rows?.[0] || { ...row, ...payload });
+    state.hallOfFameRows = sortedHallOfFameRows(
+      state.hallOfFameRows.map((item) => String(item.id) === String(rowId) ? saved : item)
+    );
+    delete state.hallOfFameDrafts[String(rowId)];
+    state.hallOfFameEditingId = null;
+  } catch (error) {
+    console.warn(error);
+    state.hallOfFameError = error.message || "Could not save Hall of Fame row.";
+  } finally {
+    state.hallOfFameSavingId = null;
+    render();
+  }
+}
+
 async function loadDefendingChampions() {
   const latestCompleted = tours.find((tour) => tour.status === "Completed");
   if (!latestCompleted || state.defendingChampions || state.defendingChampionsLoading) return;
@@ -857,6 +994,12 @@ async function loadSupabaseData() {
     if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel === "random-nudger-generator") {
       loadTourProfiles(tours[0]?.supabaseId);
     }
+    if (state.tab === "media") {
+      loadMediaLibrary();
+    }
+    if (state.tab === "hall-of-fame") {
+      loadHallOfFame();
+    }
     if (
       state.tab === "this-tour" &&
       state.detailSubTab === "Overview" &&
@@ -941,6 +1084,14 @@ let state = {
   tourPageError: "",
   tourPageEditingKey: null,
   tourPageDrafts: {},
+  hallOfFameRows: [],
+  hallOfFameLoading: false,
+  hallOfFameLoaded: false,
+  hallOfFameError: "",
+  hallOfFameSavingId: null,
+  hallOfFameEditingId: null,
+  hallOfFameAdding: false,
+  hallOfFameDrafts: {},
   randomNudgerDraw: {
     mode: "pairs",
     started: false,
@@ -991,6 +1142,7 @@ function icon(name) {
     swap: '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
     refresh: '<path d="M21 12a9 9 0 0 1-15.4 6.4L3 16"/><path d="M3 21v-5h5"/><path d="M3 12A9 9 0 0 1 18.4 5.6L21 8"/><path d="M21 3v5h-5"/>',
     shuffle: '<path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/>',
+    image: '<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m7 17 4.2-4.2a1.5 1.5 0 0 1 2.1 0L18 17"/>',
     logout: '<path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M14 4h4a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-4"/>',
   };
   return `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.home}</svg>`;
@@ -1025,6 +1177,8 @@ function HomeMenuButton() {
     <button class="home-menu-btn" data-action="toggle-home-menu" type="button" aria-label="Menu">${icon("menu")}</button>
     ${state.homeMenuOpen ? `
       <div class="home-menu">
+        <button data-action="open-menu-page" data-tab="media" type="button">${icon("image")}<span>Media</span></button>
+        <button data-action="open-menu-page" data-tab="hall-of-fame" type="button">${icon("trophy")}<span>Hall of Fame</span></button>
         <button data-action="logout" type="button">${icon("logout")}<span>Log Out</span></button>
       </div>
     ` : ""}
@@ -1519,6 +1673,19 @@ function TourBrochures(tour) {
   `;
 }
 
+function mediaTours() {
+  return tours
+    .filter((tour) => tour.status === "Completed" && tour.year)
+    .sort((a, b) => Number(b.year) - Number(a.year));
+}
+
+function loadMediaLibrary() {
+  mediaTours().forEach((tour) => {
+    loadTourPhotos(tour.year);
+    loadTourBrochures(tour.year);
+  });
+}
+
 const tourFilmEmbedsByYear = {
   2016: {
     src: "https://player.vimeo.com/video/157360184?badge=0&autopause=0&player_id=0&app_id=58479",
@@ -1573,6 +1740,171 @@ function TourFilm(tour) {
         referrerpolicy="strict-origin-when-cross-origin"
         title="${escapeHtml(film.title)}"
       ></iframe>
+    </div>
+  `;
+}
+
+function MediaPhotos(tour) {
+  if (state.tourPhotosLoadingYear === tour.year) {
+    return Card(`<p class="empty-state">Loading photos...</p>`);
+  }
+
+  if (state.tourPhotosError) {
+    return Card(`<p class="empty-state">${escapeHtml(state.tourPhotosError)}</p>`);
+  }
+
+  const photos = state.tourPhotosByYear[tour.year] || [];
+  if (!photos.length) return "";
+
+  return `
+    <h3 class="section-title">Photos</h3>
+    ${TourPhotos(tour)}
+  `;
+}
+
+function MediaBrochures(tour) {
+  if (state.tourBrochuresLoadingYear === tour.year) {
+    return Card(`<p class="empty-state">Loading brochures...</p>`);
+  }
+
+  if (state.tourBrochuresError) {
+    return Card(`<p class="empty-state">${escapeHtml(state.tourBrochuresError)}</p>`);
+  }
+
+  const brochures = state.tourBrochuresByYear[tour.year] || [];
+  if (!brochures.length) return "";
+
+  return `
+    <h3 class="section-title">Brochures</h3>
+    ${TourBrochures(tour)}
+  `;
+}
+
+function MediaTourSection(tour) {
+  const film = TourFilm(tour);
+  const photos = MediaPhotos(tour);
+  const brochures = MediaBrochures(tour);
+  const hasLoadedMedia =
+    Object.prototype.hasOwnProperty.call(state.tourPhotosByYear, tour.year) &&
+    Object.prototype.hasOwnProperty.call(state.tourBrochuresByYear, tour.year);
+  const body = [film, photos, brochures].filter(Boolean).join("");
+
+  if (!body && hasLoadedMedia) return "";
+
+  return `
+    <section class="media-tour-section">
+      <h2>${escapeHtml(tourDetailHeroTitle(tour))}</h2>
+      ${body || Card(`<p class="empty-state">Loading media...</p>`)}
+    </section>
+  `;
+}
+
+function Media() {
+  const sections = mediaTours().map(MediaTourSection).filter(Boolean);
+  return `
+    ${PageHero("Media")}
+    <div class="page-body media-library">
+      ${sections.length ? sections.join("") : Card(`<p class="empty-state">Loading media...</p>`)}
+    </div>
+  `;
+}
+
+function HallOfFame() {
+  const rows = state.hallOfFameRows || [];
+  return `
+    <section class="page-hero hall-of-fame-hero">
+      <div>
+        <h1>Hall of Fame</h1>
+      </div>
+      <button class="hof-top-add-btn" data-action="show-hall-of-fame-add" type="button">+ Add</button>
+    </section>
+    <div class="page-body hall-of-fame-page">
+      ${state.hallOfFameError ? Card(`<p class="empty-state">${escapeHtml(state.hallOfFameError)}</p>`) : ""}
+      ${state.hallOfFameAdding ? Card(`
+        <div class="hof-add-row">
+                <label>
+                  <span>Year</span>
+                  <input data-hof-new-year type="number" inputmode="numeric" placeholder="2026" />
+                </label>
+                <label>
+                  <span>Commentary</span>
+                  <textarea data-hof-new-commentary rows="3" placeholder="Add Hall of Fame commentary..."></textarea>
+                </label>
+                <div class="hof-row-actions">
+                  <button class="hof-cancel-btn" data-action="cancel-hall-of-fame-add" type="button">Cancel</button>
+                  <button class="hof-add-btn" data-action="add-hall-of-fame-row" type="button" ${state.hallOfFameSavingId === "new" ? "disabled" : ""}>
+                    ${state.hallOfFameSavingId === "new" ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+      `, "hof-add-card") : ""}
+      ${state.hallOfFameLoading ? Card(`<p class="empty-state">Loading Hall of Fame...</p>`) : ""}
+      ${!state.hallOfFameLoading && rows.length ? `
+        <p class="hof-intro">Memorable moments, quotes and stories from Cultured Nudgers tours over the years.</p>
+        <div class="hof-table" role="table" aria-label="Hall of Fame entries">
+          <div class="hof-table-head" role="row">
+            <span role="columnheader">Year</span>
+            <span role="columnheader">Commentary</span>
+            <span role="columnheader">Edit</span>
+          </div>
+          ${rows.map(HallOfFameRow).join("")}
+        </div>
+      ` : ""}
+      ${!state.hallOfFameLoading && state.hallOfFameLoaded && !rows.length ? Card(`<p class="empty-state">No Hall of Fame rows yet.</p>`) : ""}
+    </div>
+  `;
+}
+
+function formatHallOfFameYear(year) {
+  const numericYear = Number(year);
+  if (!Number.isFinite(numericYear)) return "TBC";
+  return `'${String(Math.trunc(numericYear)).slice(-2)}`;
+}
+
+function HallOfFameRow(row) {
+  const draft = hallOfFameDraftForRow(row);
+  const isSaving = String(state.hallOfFameSavingId) === String(row.id);
+  const isEditing = String(state.hallOfFameEditingId) === String(row.id);
+  if (!isEditing) {
+    return `
+      <div class="hof-row hof-row-read ${isSaving ? "saving" : ""}" role="row" data-hof-row-id="${row.id}">
+        <span class="hof-year-cell" role="cell">${escapeHtml(formatHallOfFameYear(row.year))}</span>
+        <p class="hof-commentary-cell" role="cell">${escapeHtml(row.commentary || "")}</p>
+        <button class="hof-edit-btn" data-action="edit-hall-of-fame-row" data-row-id="${row.id}" type="button" ${isSaving ? "disabled" : ""}>
+          ${isSaving ? "Saving..." : "Edit"}
+        </button>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="hof-row hof-row-edit ${isSaving ? "saving" : ""}" role="row" data-hof-row-id="${row.id}">
+      <label role="cell">
+        <span>Year</span>
+        <input
+          data-hof-field="year"
+          data-row-id="${row.id}"
+          type="number"
+          inputmode="numeric"
+          value="${escapeHtml(draft.year)}"
+          ${isSaving ? "disabled" : ""}
+        />
+      </label>
+      <label role="cell">
+        <span>Commentary</span>
+        <textarea
+          data-hof-field="commentary"
+          data-row-id="${row.id}"
+          rows="3"
+          ${isSaving ? "disabled" : ""}
+        >${escapeHtml(draft.commentary)}</textarea>
+      </label>
+      <div class="hof-row-actions">
+        <small>${isSaving ? "Saving..." : "Autosaves on exit"}</small>
+        <button class="hof-save-btn" data-action="save-hall-of-fame-row" data-row-id="${row.id}" type="button" ${isSaving ? "disabled" : ""}>
+          ${isSaving ? "Saving..." : "Save"}
+        </button>
+      </div>
     </div>
   `;
 }
@@ -3767,6 +4099,8 @@ function render() {
     "this-tour": ThisTour,
     stats: Stats,
     profiles: Profiles,
+    media: Media,
+    "hall-of-fame": HallOfFame,
   };
   if (!screens[state.tab]) state.tab = "home";
   const screenContent = state.tab === "this-tour" ? ThisTour() : state.detailTour ? TourDetail() : screens[state.tab]();
@@ -3846,6 +4180,21 @@ app.addEventListener("click", (event) => {
     render();
     persistRoute();
     return;
+  }
+  if (action === "open-menu-page") {
+    if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
+    randomNudgerSpinTimer = null;
+    state.restoredScrollTop = 0;
+    state.tab = target.dataset.tab || "home";
+    state.detailTour = null;
+    state.detailSubTab = "Overview";
+    state.thisTourOverviewPanel = "";
+    state.matchReportOpenYear = null;
+    state.touristProfileOpen = false;
+    state.touristProfileReturn = null;
+    state.homeMenuOpen = false;
+    if (state.tab === "media") loadMediaLibrary();
+    if (state.tab === "hall-of-fame") loadHallOfFame();
   }
   if (action === "dismiss-birthday-overlay") {
     state.birthdayOverlayDismissed = true;
@@ -4018,6 +4367,28 @@ app.addEventListener("click", (event) => {
     startRandomNudgerSlot();
     return;
   }
+  if (action === "add-hall-of-fame-row") {
+    addHallOfFameRow();
+    return;
+  }
+  if (action === "show-hall-of-fame-add") {
+    state.hallOfFameAdding = true;
+  }
+  if (action === "cancel-hall-of-fame-add") {
+    state.hallOfFameAdding = false;
+  }
+  if (action === "edit-hall-of-fame-row") {
+    const rowId = target.dataset.rowId;
+    const row = state.hallOfFameRows.find((item) => String(item.id) === String(rowId));
+    if (row) {
+      state.hallOfFameEditingId = rowId;
+      state.hallOfFameDrafts[String(rowId)] = hallOfFameDraftForRow(row);
+    }
+  }
+  if (action === "save-hall-of-fame-row") {
+    saveHallOfFameRow(target.dataset.rowId);
+    return;
+  }
   if (action === "stat-tab") {
     state.restoredScrollTop = 0;
     state.statSubTab = target.dataset.tab;
@@ -4115,9 +4486,31 @@ app.addEventListener("click", (event) => {
 });
 
 app.addEventListener("input", (event) => {
+  const hallOfFameField = event.target.closest("[data-hof-field]");
+  if (hallOfFameField) {
+    const rowId = hallOfFameField.dataset.rowId;
+    const row = state.hallOfFameRows.find((item) => String(item.id) === String(rowId));
+    if (!row) return;
+    const key = String(rowId);
+    state.hallOfFameDrafts[key] = {
+      ...hallOfFameDraftForRow(row),
+      [hallOfFameField.dataset.hofField]: hallOfFameField.value,
+    };
+    return;
+  }
+
   const target = event.target.closest(".cms-content-editor");
   if (!target) return;
   updateTourPageDraftFromEditor();
+});
+
+app.addEventListener("focusout", (event) => {
+  const hallOfFameField = event.target.closest("[data-hof-field]");
+  if (!hallOfFameField) return;
+  const row = hallOfFameField.closest("[data-hof-row-id]");
+  if (String(state.hallOfFameEditingId) !== String(hallOfFameField.dataset.rowId)) return;
+  if (row && event.relatedTarget && row.contains(event.relatedTarget)) return;
+  saveHallOfFameRow(hallOfFameField.dataset.rowId);
 });
 
 app.addEventListener("keydown", (event) => {

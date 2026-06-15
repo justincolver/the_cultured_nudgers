@@ -659,6 +659,232 @@ svg {
   margin-top: 0;
 }
 
+.media-library {
+  display: grid;
+  gap: 22px;
+}
+
+.media-tour-section {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(208, 173, 103, .2);
+}
+
+.media-tour-section:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.media-tour-section h2 {
+  margin: 0;
+  color: var(--gold-soft);
+  font-size: 21px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.media-tour-section .section-title {
+  margin-top: 4px;
+}
+
+.hall-of-fame-page {
+  display: grid;
+  gap: 14px;
+}
+
+.hall-of-fame-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.hall-of-fame-hero > div {
+  min-width: 0;
+}
+
+.hof-top-add-btn {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 13px;
+  background: linear-gradient(145deg, var(--gold-soft), var(--gold));
+  border: 1px solid rgba(239, 209, 148, .62);
+  border-radius: 9px;
+  color: #041711;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.hof-add-card {
+  margin-top: 0;
+}
+
+.hof-intro {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.hof-add-row,
+.hof-row-edit {
+  display: grid;
+  gap: 10px;
+}
+
+.hof-add-row label,
+.hof-row-edit label {
+  display: grid;
+  gap: 5px;
+}
+
+.hof-add-row label span,
+.hof-row-edit label span,
+.hof-table-head span {
+  color: var(--gold-soft);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.hof-add-row input,
+.hof-add-row textarea,
+.hof-row-edit input,
+.hof-row-edit textarea {
+  width: 100%;
+  padding: 11px 12px;
+  background: rgba(1, 9, 7, .34);
+  border: 1px solid rgba(208, 173, 103, .24);
+  border-radius: 10px;
+  color: var(--cream);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.hof-add-row input:focus,
+.hof-add-row textarea:focus,
+.hof-row-edit input:focus,
+.hof-row-edit textarea:focus {
+  border-color: rgba(239, 209, 148, .62);
+  box-shadow: 0 0 0 2px rgba(208, 173, 103, .16);
+}
+
+.hof-add-row textarea,
+.hof-row-edit textarea {
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.hof-add-btn {
+  min-height: 42px;
+  background: linear-gradient(145deg, var(--gold-soft), var(--gold));
+  border-radius: 10px;
+  color: #041711;
+  font-size: 13px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.hof-add-btn:disabled {
+  opacity: .72;
+}
+
+.hof-table {
+  display: grid;
+  gap: 10px;
+}
+
+.hof-table-head {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 58px;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.hof-row {
+  padding: 13px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .035), transparent),
+    var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.hof-row-read {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 58px;
+  gap: 10px;
+  align-items: start;
+}
+
+.hof-year-cell {
+  color: var(--gold-soft);
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.hof-commentary-cell {
+  min-width: 0;
+  margin: 0;
+  color: var(--cream);
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.hof-edit-btn,
+.hof-save-btn,
+.hof-cancel-btn {
+  min-height: 32px;
+  padding: 0 10px;
+  background: rgba(208, 173, 103, .14);
+  border: 1px solid rgba(208, 173, 103, .36);
+  border-radius: 9px;
+  color: var(--gold-soft);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.hof-row-edit label:first-child input {
+  max-width: 110px;
+}
+
+.hof-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hof-add-row .hof-row-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.hof-add-row .hof-row-actions .hof-cancel-btn,
+.hof-add-row .hof-row-actions .hof-add-btn {
+  width: 100%;
+  min-height: 42px;
+}
+
+.hof-row-actions small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.hof-row.saving {
+  opacity: .78;
+}
+
 .next-tour {
   position: relative;
   overflow: hidden;
