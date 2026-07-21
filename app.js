@@ -1064,6 +1064,7 @@ let state = {
   touristDataError: "",
   touristProfileOpen: false,
   touristProfileReturn: null,
+  touristToursOverlayOpen: false,
   tourResultsByYear: {},
   tourResultsLoadingYear: null,
   tourResultsError: "",
@@ -1530,7 +1531,10 @@ function PlayerCard(player) {
         <strong>${escapeHtml(String(player.handicap))}</strong>
       </div>
       <div class="player-stats">
-        <span><span class="player-stat-value">${icon("flag")}<b>${player.tours}</b></span><small>${Number(player.tours) === 1 ? "Tour" : "Tours"}</small></span>
+        <button class="player-tour-stat" data-action="open-tour-history" type="button" aria-haspopup="dialog">
+          <span class="player-stat-value">${icon("flag")}<b>${player.tours}</b></span>
+          <small>${Number(player.tours) === 1 ? "Tour" : "Tours"}</small>
+        </button>
         <span><span class="player-stat-value">${icon("star")}<b>${player.tourWins}</b></span><small>${Number(player.tourWins) === 1 ? "Tour Win" : "Tour Wins"}</small></span>
         <span><span class="player-stat-value">${icon("ball")}<b>${player.individualWins}</b></span><small>Total Points</small></span>
       </div>
@@ -1543,6 +1547,34 @@ function PlayerCard(player) {
         ${HandicapGraph(player.handicapHistory)}
       </div>
     </article>
+  `;
+}
+
+function TouristTourHistoryOverlay(player) {
+  const history = player?.tourHistory || [];
+
+  return `
+    <section class="tour-history-overlay" role="dialog" aria-modal="true" aria-label="${escapeHtml(player?.name || "Tourist")} tour history">
+      <div class="overview-feature-topbar rivals-overlay-topbar">
+        <button class="overview-feature-back" data-action="close-tour-history" aria-label="Close tour history">${icon("back")}</button>
+        <div>
+          <span>Tours</span>
+          <h2>${escapeHtml(player?.name || "Tourist")}</h2>
+        </div>
+      </div>
+      ${
+        history.length
+          ? `<div class="tour-history-list">
+              ${history.map((tour) => `
+                <div class="tour-history-row">
+                  <span>${escapeHtml(String(tour.year))}</span>
+                  <strong>${escapeHtml(tour.tourName || `Tour ${tour.year}`)}</strong>
+                </div>
+              `).join("")}
+            </div>`
+          : `<p class="empty-state">No tours found for this tourist.</p>`
+      }
+    </section>
   `;
 }
 
@@ -4312,6 +4344,34 @@ function playerTourYears(playerName, profileRows = []) {
   return [...new Set([...profileYears, ...resultYears])];
 }
 
+function playerTourHistory(playerName, profileRows = []) {
+  const byYear = {};
+
+  profileRows.forEach((row) => {
+    const tour = tours.find((item) => Number(item.supabaseId) === Number(row.tour_id));
+    if (!tour?.year) return;
+    byYear[tour.year] = {
+      year: tour.year,
+      tourName: tourDisplayName(tour) || `Tour ${tour.year}`,
+    };
+  });
+
+  state.touristResultsRows.forEach((row) => {
+    const year = row.year;
+    const played =
+      splitTeamNames(row.crocs_team).includes(playerName) ||
+      splitTeamNames(row.foz_team).includes(playerName);
+    if (!year || !played) return;
+    const tour = tours.find((item) => Number(item.year) === Number(year));
+    byYear[year] = {
+      year,
+      tourName: row.tour_name || tourDisplayName(tour) || `Tour ${year}`,
+    };
+  });
+
+  return Object.values(byYear).sort((a, b) => Number(b.year) - Number(a.year));
+}
+
 function playerTourWins(playerName, profileRows = []) {
   const winners = tourWinnerByYear(state.touristResultsRows);
   const profileByYear = profileRows.reduce((byYear, row) => {
@@ -4345,6 +4405,7 @@ function buildTouristPlayers() {
       role: formatTourRole(null),
       handicapHistory: [],
       debutTour: "N/A",
+      tourHistory: [],
       winPercent: "N/A",
       strengths: player.strengths?.length ? player.strengths : ["[PLACEHOLDER]"],
       weaknesses: player.weaknesses?.length ? player.weaknesses : ["[PLACEHOLDER]"],
@@ -4375,7 +4436,8 @@ function buildTouristPlayers() {
         }))
         .filter((row) => row.year);
       const record = recordsByName[player.player_name] || emptyPlayerRecord(player.player_name);
-      const tourYears = playerTourYears(player.player_name, profileRows);
+      const tourHistory = playerTourHistory(player.player_name, profileRows);
+      const tourYears = tourHistory.map((row) => row.year);
       const debutTour = tourYears.length ? Math.min(...tourYears) : "N/A";
       const winPercent = record.matches ? `${percentage(record.wins, record.matches)}%` : "N/A";
 
@@ -4392,6 +4454,7 @@ function buildTouristPlayers() {
         about: latestProfile?.profile_body || "[PLACEHOLDER]",
         handicapHistory,
         debutTour,
+        tourHistory,
         winPercent,
         strengths: ["[PLACEHOLDER]"],
         weaknesses: ["[PLACEHOLDER]"],
@@ -4424,6 +4487,7 @@ function TouristProfilePage(player) {
     <div class="tourist-profile-page">
       <button class="tourist-back" data-action="tourist-back" aria-label="Back to Tourists">${icon("back")}</button>
       ${PlayerCard(player)}
+      ${state.touristToursOverlayOpen ? TouristTourHistoryOverlay(player) : ""}
     </div>
   `;
 }
@@ -4681,6 +4745,7 @@ app.addEventListener("click", (event) => {
     } else {
       state.touristProfileOpen = false;
     }
+    state.touristToursOverlayOpen = false;
     state.openHeadToHeadPicker = null;
     state.openIndividualPicker = false;
     state.rivalsOverlayOpen = false;
@@ -4704,6 +4769,7 @@ app.addEventListener("click", (event) => {
     state.matchReportOpenYear = null;
     state.touristProfileOpen = false;
     state.touristProfileReturn = null;
+    state.touristToursOverlayOpen = false;
     state.rivalsOverlayOpen = false;
     state.statsOverlayKey = "";
     state.homeMenuOpen = false;
@@ -4974,9 +5040,17 @@ app.addEventListener("click", (event) => {
     } else {
       state.touristProfileReturn = null;
     }
+    state.touristToursOverlayOpen = false;
     state.touristProfileOpen = true;
   }
+  if (action === "open-tour-history") {
+    state.touristToursOverlayOpen = true;
+  }
+  if (action === "close-tour-history") {
+    state.touristToursOverlayOpen = false;
+  }
   if (action === "tourist-back") {
+    state.touristToursOverlayOpen = false;
     if (state.touristProfileReturn) {
       const returnTarget = state.touristProfileReturn;
       state.tab = returnTarget.tab || "profiles";
