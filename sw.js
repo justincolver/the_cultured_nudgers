@@ -1,4 +1,4 @@
-const CACHE_NAME = "cultured-nudgers-v191";
+const CACHE_NAME = "cultured-nudgers-v202";
 const ASSETS = [
   "./index.html",
   "./login.html",
@@ -38,6 +38,22 @@ const ASSETS = [
   "./assets/images/aberdovey/hole-16.jpg",
   "./assets/images/aberdovey/hole-17.jpg",
   "./assets/images/aberdovey/hole-18.jpg",
+  "./assets/images/course-guides/aberdovey-overview.jpg",
+  "./assets/images/course-guides/borth-overview.jpg",
+  "./assets/images/borth/borth-course-01.jpg",
+  "./assets/images/borth/borth-course-02.jpg",
+  "./assets/images/borth/borth-course-03.jpg",
+  "./assets/images/borth/borth-course-04.jpg",
+  "./assets/images/borth/borth-course-05.jpg",
+  "./assets/images/borth/borth-course-06.jpg",
+  "./assets/images/borth/borth-course-07.jpg",
+  "./assets/images/borth/borth-course-08.jpg",
+  "./assets/images/borth/borth-course-09.jpg",
+  "./assets/images/borth/borth-course-10.jpg",
+  "./assets/images/borth/borth-course-11.jpg",
+  "./assets/images/borth/borth-course-12.jpg",
+  "./assets/images/borth/borth-course-13.jpg",
+  "./assets/images/borth/borth-course-14.jpg",
   "./assets/images/trophies/bill-splitter-trophy-lite.png",
   "./assets/images/headshots/bander-pyke.png",
   "./assets/images/headshots/brian-crotty.png",

@@ -1004,7 +1004,8 @@ async function loadSupabaseData() {
       state.tab === "this-tour" &&
       state.detailSubTab === "Overview" &&
       state.thisTourOverviewPanel &&
-      !["scorecards", "random-nudger-generator", "course-guide"].includes(state.thisTourOverviewPanel)
+      !["scorecards", "random-nudger-generator"].includes(state.thisTourOverviewPanel) &&
+      !isCourseGuidePanel(state.thisTourOverviewPanel)
     ) {
       loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
     }
@@ -1760,30 +1761,211 @@ const aberdoveyCourseTees = [
   { key: "orange", label: "Orange", total: 5797, yards: [414, 278, 133, 356, 168, 327, 460, 308, 145, 403, 329, 123, 495, 362, 422, 266, 399, 409] },
 ];
 
+function isCourseGuidePanel(panel = state.thisTourOverviewPanel) {
+  return ["course-guide", "aberdovey-course-guide", "borth-course-guide"].includes(panel);
+}
+
+function currentCourseGuideKey(panel = state.thisTourOverviewPanel) {
+  return panel === "borth-course-guide" ? "borth" : "aberdovey";
+}
+
+const borthMenPars = [4, 4, 4, 5, 4, 4, 3, 5, 3, 4, 3, 4, 5, 3, 4, 3, 4, 4];
+const borthWomenPars = [4, 5, 4, 5, 4, 4, 3, 5, 3, 5, 3, 4, 5, 3, 4, 3, 4, 4];
+const borthStrokeIndex = [11, 1, 5, 13, 9, 7, 17, 3, 15, 2, 16, 10, 4, 6, 18, 8, 14, 12];
+const borthCourseTees = [
+  { key: "white", label: "White", total: 6084, yards: [383, 453, 358, 511, 342, 339, 196, 520, 174, 409, 169, 326, 477, 200, 314, 181, 347, 385], pars: borthMenPars },
+  { key: "yellow", label: "Yellow", total: 5710, yards: [382, 414, 356, 504, 302, 339, 144, 472, 168, 408, 130, 281, 470, 186, 312, 181, 296, 365], pars: borthMenPars },
+  { key: "red", label: "Red", total: 5350, yards: [375, 435, 303, 442, 286, 285, 147, 439, 163, 402, 126, 258, 429, 159, 308, 152, 286, 355], pars: borthWomenPars },
+  { key: "green", label: "Green", total: 4930, yards: [373, 387, 287, 442, 274, 280, 109, 429, 131, 377, 120, 226, 339, 151, 303, 150, 251, 301], pars: borthWomenPars },
+];
+
+const borthHoleTitles = [
+  "Old River, New Problems",
+  "The Coastal Corridor",
+  "Left Is Still Wet",
+  "The Long Way Round",
+  "Temptation in the Dunes",
+  "Into the Wrinkles",
+  "Four Bunkers, One Number",
+  "The Long March",
+  "Turn for Home",
+  "Raised Expectations",
+  "Short, Not Simple",
+  "Dunes on Every Side",
+  "The Last Par Five",
+  "Along the Edge",
+  "Roadside Restraint",
+  "Traffic Management",
+  "The Final Squeeze",
+  "Old River, Last Word",
+];
+
+const borthOfficialCopy = [
+  "A relatively gentle opening on the flatter linksland, although the old river bed and the shared territory of the closing hole reward an accurate tee shot. Start in play and take the green on from a comfortable angle.",
+  "The hardest hole on the card runs through a narrow coastal corridor. Cardigan Bay and the beach wait left while the road guards the right, so position matters more than chasing every last yard from the tee.",
+  "Shorter than the second but played through the same exposed corridor. The beach remains the serious miss on the left and the road still frames the right; a controlled tee ball sets up the sensible approach.",
+  "The first par five sweeps around a large house and introduces the more sculpted section of the course. Shape the hole rather than trying to shorten it recklessly, then use the generous par as a scoring opportunity.",
+  "A short par four at the entrance to the dunes. Low mounding and bunkers interrupt the direct route, so choose a tee club that leaves a clear view of the compact target rather than an awkward half-shot from trouble.",
+  "Another compact par four, now fully among the links contours. The number on the card is modest, but humps, hollows and the coastal wind make the best angle into the green more valuable than another twenty yards.",
+  "A downhill par three with a fine view and four bunkers arranged around the green. It can play shorter than its measured yardage, so read the wind carefully and favour the centre of the putting surface.",
+  "The longest hole on the property reaches the far end of the out-and-back routing. Build the hole in three measured shots unless the wind and lie make the second genuinely inviting; the dunes punish a forced recovery.",
+  "A second par three closes the outward half and begins the turn for home. The exposed setting can change the effective yardage quickly, so commit to the wind-adjusted number and use the width of the green.",
+  "A strong par four played to an impressive raised green complex. The approach is the defining shot: leave enough club to reach the level of the putting surface and avoid a delicate recovery from below it.",
+  "The shortest hole is played from an elevated tee to a secluded green. Three bunkers guard the front while gorse and heavy rough wait beyond, making distance control more important than the modest yardage suggests.",
+  "A tempting short par four threaded through the dunes to a tiny green that is almost hidden by sand hills. Position the tee shot for a full view and accept that the second shot, not the drive, usually decides the score.",
+  "The final par five brings the sea back into view and is reachable in helpful conditions. Cross the road with care, keep the ball on the useful side of the fairway and only attack in two when the wind and lie agree.",
+  "A fine par three played along the edge of the sea to a well-defended green complex. The safe-looking bailout can leave bunkers between ball and flag, so take a committed line to the broadest part of the target.",
+  "The course returns to flatter, more exposed ground and the road begins to influence the right side again. This short par four rewards a straight positional tee shot and a controlled approach more than outright aggression.",
+  "A substantial par three with the road close to the right of the returning holes. Select for the true wind, aim at the useful portion of the green and avoid turning a difficult par into a dangerous search.",
+  "A short par four squeezed between the road on the right and marshy ground on the left. It is the last major positional test: choose a club that keeps both boundaries out of play and leaves a confident approach.",
+  "The closing par four crosses the old river bed and shares the broad opening ground on the run back to the clubhouse. Keep the final drive in its proper channel, then take enough club for the last approach of the day.",
+];
+
+const borthMajCopy = [
+  "A gentle opener is golf-course language for “nothing to worry about,” which is precisely when the first tee becomes a full-body administrative exercise. The old river bed does not care how good the warm-up felt. Put one in play, find the middle and postpone the three-putt until everyone has settled in.",
+  "Sea left, road right, stroke index one and 414 yards from yellow: the corridor has been designed by somebody with a strong interest in consequences. This is no place for a hopeful power fade. Pick a start line, swing within yourself and accept that bogey may be the most cultured score in the group.",
+  "The corridor continues, only shorter and therefore apparently “gettable.” That word has ruined many perfectly respectable cards. Left still belongs to Cardigan Bay, right still has moving vehicles, and the safest play remains a boring ball followed by a sensible club. Boring travels remarkably well in match play.",
+  "The first par five will cause several players to discover a sudden, deeply held belief in going for everything. The hole sweeps around a house, so follow its shape. Three tidy shots make par feel routine; one ambitious fairway wood can turn the property boundary into an informal spectator area.",
+  "Just over 300 yards and sitting at the entrance to the dunes: a guaranteed outbreak of driver. The grown-up option is a club short of the mounding, a full wedge and no speech. Anyone going for the green must accept the ancient contract of the short par four: applause if it works, silence if it does not.",
+  "The scorecard says 339. The ground says humps, hollows and lies that appear to have been folded overnight. Keep the tee shot in the part of the fairway that offers a view, then play the bounce rather than demanding a towering dart. Links golf rewards imagination, but it still requires contact first.",
+  "Downhill, scenic and short enough from yellow to invite one club less. Four bunkers are waiting for exactly that calculation. Read the breeze, aim for the middle and let gravity do its allotted work. A par three is not improved by a bunker seminar followed by three separate attempts to leave it.",
+  "This is the outward long march and the last green before the routing turns. Advance the ball in sensible portions. A fairway wood from a hanging lie may feel heroic for roughly half a second; the resulting search through the dunes will feel significantly longer. Three shots, two putts, no documentary.",
+  "The turn begins with a par three, which means halfway scorecard negotiations start before the ball has landed. Ignore the totals, find the wind and hit the middle. There will be ample time afterwards to claim the front nine was “basically level” once the appropriate accounting method has been selected.",
+  "The back nine opens with a raised green and stroke index two. The target will reject anything under-clubbed with the efficiency of a nightclub doorman. Take enough to reach the level, accept the longer putt and do not attempt the delicate little spinner unless you have previously demonstrated possession of one.",
+  "The shortest hole is protected by three front bunkers and unpleasantness beyond. In other words, the entire briefing is distance control. Choose the number, not the club you would like to tell people you hit. A 130-yard shot still counts as 130 yards even when delivered with a deeply flattering eight iron.",
+  "A short par four with a tiny green hidden among dunes: restraint has returned for another hearing. Place the tee ball where the green becomes visible. Driving closer but blind merely produces a more expensive guess. The correct wedge and two putts beat an improvised recovery played while asking whether anyone saw it bounce.",
+  "The final par five brings sea views, a road crossing and the usual surge of late-round optimism. If the lie is clean and the wind helps, attack with conviction. If either condition fails, lay up to a number. “I thought I could get there” remains an explanation, not a score.",
+  "This is the postcard par three, played along the sea edge, so take the photograph before the swing. The apparent bailout is not always kind and bunkers can leave a difficult recovery. Commit to the widest part of the green. A safe two-putt par is allowed to be beautiful even without a drone shot.",
+  "The dunes begin to recede and the road re-enters the conversation. The hole is short enough to tempt speed and tight enough to punish it. Put a positional club on grass, hit the green and move on. The return stretch is where tired swings start adding decorative flourishes nobody requested.",
+  "A proper par three beside the road requires a committed number and an awareness that right is more than merely inconvenient. Keep the shot on the golf course. This is an excellent moment to discover that aiming at the middle is a strategy rather than a moral failure.",
+  "Road right, marsh left and a short par four between them: the final squeeze. There is no prize for finding out which boundary is worse. Select the club that cannot reach either, leave a full approach and let somebody else convert 296 yards into six separate items on the scorecard.",
+  "The old river bed returns before the last run to the clubhouse. Nobody is to announce a projected total, a likely match result or the drinks order until the ball is safely on the green. One straight drive and one committed approach remain. The final three-putt, if required, should at least be performed with dignity.",
+];
+
+const borthVideos = [
+  { id: "N442a4WtNTo", title: "A Bird’s Eye View" },
+  { id: "3qWPYZsb15g", title: "Wales Tour 2024" },
+  { id: "ogVKIVlSLsc", title: "Fideo Clwb Golff Borth" },
+  { id: "3Du7MKn4Ld4", title: "Off the Beaten Track" },
+  { id: "8BIkMdb9tss", title: "Golf Monthly visits" },
+];
+const borthImageNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 4, 7, 10, 12];
+const borthCourseHoles = Array.from({ length: 18 }, (_, index) => {
+  const video = borthVideos[index % borthVideos.length];
+  const imageNumber = String(borthImageNumbers[index]).padStart(2, "0");
+  return {
+    number: index + 1,
+    title: borthHoleTitles[index],
+    par: borthMenPars[index],
+    strokeIndex: borthStrokeIndex[index],
+    image: `/assets/images/borth/borth-course-${imageNumber}.jpg`,
+    youtubeId: video.id,
+    videoTitle: video.title,
+    official: borthOfficialCopy[index],
+    maj: borthMajCopy[index],
+  };
+});
+
+const courseGuideConfigs = {
+  aberdovey: {
+    key: "aberdovey",
+    label: "Aberdovey Course Guide",
+    pageTitle: "Aberdovey",
+    summary: "Classic Welsh links overlooking the Dyfi Estuary",
+    heroImage: "/assets/images/course-guides/aberdovey-overview.jpg",
+    courseType: "Links",
+    conditions: "Windy",
+    rating: "9.4",
+    scorecardTitle: "Scorecard: Aberdovey Golf Club",
+    credit: "Course facts, maps and flyovers credited to Aberdovey Golf Club.",
+    overview:
+      "A proper Welsh links set where the dunes meet the Dyfi Estuary, Aberdovey asks for patience, low ball flights and a calm relationship with the wind. The course moves through classic out-and-back terrain, with firm fairways, raised greens and enough natural movement to make every club selection feel like a small negotiation.",
+    quote: "Aberdovey is a wonderful place to play golf.",
+    quoteByline: "Ian Woosnam, former World No. 1",
+    teeDefault: "gold",
+    videoLabel: "Official flyover",
+    videoAside: "Press play",
+    visualLabel: "Hole map",
+    visualAside: "Not to scale after four pints",
+    imageAlt: (hole) => `Official map of Aberdovey hole ${hole.number}`,
+    films: aberdoveyCourseHoles.map((hole) => ({ id: hole.youtubeId, title: `Hole ${hole.number} Flyover` })),
+    holes: aberdoveyCourseHoles,
+    copy: aberdoveyCourseGuideCopy,
+    tees: aberdoveyCourseTees,
+  },
+  borth: {
+    key: "borth",
+    label: "Borth Course Guide",
+    pageTitle: "Borth & Ynyslas",
+    summary: "Raw seaside links running through dunes beside Cardigan Bay",
+    heroImage: "/assets/images/course-guides/borth-overview.jpg",
+    courseType: "Links",
+    conditions: "Exposed",
+    rating: "8.7",
+    scorecardTitle: "Scorecard: Borth & Ynyslas Golf Club",
+    credit: "Scorecard, course film and photography credited to Borth & Ynyslas Golf Club.",
+    overview:
+      "A traditional seaside links on the Ceredigion coast, Borth & Ynyslas runs between Cardigan Bay, the dunes and the road. It is not long by modern standards, but exposed wind, firm turf, old river beds and tight corridors make position matter all day.",
+    quote: "I found it a course of great charm.",
+    quoteByline: "Donald Steel, golf writer and course architect",
+    teeDefault: "yellow",
+    videoLabel: "Course film",
+    videoAside: (hole) => hole.videoTitle || "Press play",
+    visualLabel: "Borth links",
+    visualAside: "Club photography",
+    imageAlt: () => "Official course photography from Borth & Ynyslas Golf Club",
+    films: borthVideos,
+    holes: borthCourseHoles,
+    copy: {},
+    tees: borthCourseTees,
+  },
+};
+
+function currentCourseGuideConfig() {
+  return courseGuideConfigs[currentCourseGuideKey()] || courseGuideConfigs.aberdovey;
+}
+
 function selectedCourseGuideTee() {
-  return aberdoveyCourseTees.find((tee) => tee.key === state.selectedCourseGuideTee) || aberdoveyCourseTees.find((tee) => tee.key === "gold") || aberdoveyCourseTees[0];
+  const config = currentCourseGuideConfig();
+  return config.tees.find((tee) => tee.key === state.selectedCourseGuideTee) || config.tees.find((tee) => tee.key === config.teeDefault) || config.tees[0];
 }
 
 function courseGuideHole(number = 1) {
-  const baseHole = aberdoveyCourseHoles.find((hole) => hole.number === Number(number)) || aberdoveyCourseHoles[0];
-  const copy = aberdoveyCourseGuideCopy[baseHole.number] || {};
+  const config = currentCourseGuideConfig();
+  const baseHole = config.holes.find((hole) => hole.number === Number(number)) || config.holes[0];
+  const copy = config.copy[baseHole.number] || {};
   const tee = selectedCourseGuideTee();
   return {
     ...baseHole,
     ...copy,
     yards: tee?.yards?.[baseHole.number - 1] || copy.yards || baseHole.yards,
+    par: tee?.pars?.[baseHole.number - 1] || baseHole.par,
   };
 }
 
 function CourseGuideTeePicker() {
+  const config = currentCourseGuideConfig();
   const selectedTee = selectedCourseGuideTee();
   return `
     <label class="course-tee-picker">
       <span>Tee</span>
       <select data-action="course-guide-tee" aria-label="Select tee">
-        ${aberdoveyCourseTees.map((tee) => `
-          <option value="${tee.key}" ${tee.key === selectedTee?.key ? "selected" : ""}>${tee.label} · ${tee.total} yds</option>
+        ${config.tees.map((tee) => `
+          <option value="${tee.key}" ${tee.key === selectedTee?.key ? "selected" : ""}>${tee.label}</option>
         `).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function CourseGuideCoursePicker() {
+  const selectedCourse = currentCourseGuideKey();
+  return `
+    <label class="course-course-picker">
+      <span>Course</span>
+      <select data-action="course-guide-course" aria-label="Select course">
+        <option value="aberdovey-course-guide" ${selectedCourse === "aberdovey" ? "selected" : ""}>Aberdovey</option>
+        <option value="borth-course-guide" ${selectedCourse === "borth" ? "selected" : ""}>Borth</option>
       </select>
     </label>
   `;
@@ -1792,20 +1974,133 @@ function CourseGuideTeePicker() {
 function CourseGuideHeader() {
   return `
     <div class="course-guide-header">
-      <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
+      ${CourseGuideCoursePicker()}
       ${CourseGuideTeePicker()}
-      <button class="course-scorecard-button" data-action="open-course-scorecard" type="button">${icon("scorecard")}<span>View Scorecard</span></button>
+      <button class="course-scorecard-button" data-action="open-course-scorecard" type="button">${icon("scorecard")}<span>Scorecard</span></button>
     </div>
   `;
 }
 
 function CourseGuideScorecardOverlay() {
   if (!state.courseGuideScorecardOpen) return "";
+  const config = currentCourseGuideConfig();
   return `
-    <section class="course-scorecard-overlay" role="dialog" aria-modal="true" aria-label="Aberdovey scorecard">
+    <section class="course-scorecard-overlay" role="dialog" aria-modal="true" aria-label="${escapeHtml(config.label)} scorecard">
       <div class="course-scorecard-modal">
-        <div class="course-scorecard-modal-body">${AberdoveyScorecard({ closeButton: true })}</div>
+        <div class="course-scorecard-modal-body">${CourseGuideScorecard({ closeButton: true })}</div>
       </div>
+    </section>
+  `;
+}
+
+function CourseGuideFactPills(config) {
+  const selectedTee = selectedCourseGuideTee();
+  const selectedPar = (selectedTee?.pars || config.holes.map((hole) => hole.par)).reduce((sum, par) => sum + Number(par || 0), 0);
+  const facts = [
+    { icon: "≈", label: config.courseType || "Links" },
+    { icon: icon("flag"), label: `Par ${selectedPar}` },
+    { icon: "▱", label: `${Number(selectedTee?.total || 0).toLocaleString("en-GB")} yds` },
+  ];
+
+  return `
+    <div class="course-overview-facts" aria-label="${escapeHtml(config.pageTitle)} course facts">
+      ${facts.map((fact) => `
+        <span>
+          <span class="course-overview-fact-icon">${fact.icon}</span>
+          <b>${escapeHtml(fact.label)}</b>
+        </span>
+      `).join("")}
+    </div>
+  `;
+}
+
+function CourseGuideHoleStrip(config, showCourseOverview, selectedHole) {
+  return `
+    <nav class="course-hole-strip" aria-label="Choose a hole">
+      <button
+        class="${showCourseOverview ? "active" : ""}"
+        data-action="course-guide-hole"
+        data-hole="0"
+        type="button"
+        aria-label="${escapeHtml(config.pageTitle || config.label)} course guide overview"
+        ${showCourseOverview ? `aria-current="page"` : ""}
+      >
+        <span class="course-hole-number">${icon("home")}</span>
+        <span class="course-hole-par">Overview</span>
+      </button>
+      ${config.holes.map((hole) => {
+        const tee = selectedCourseGuideTee();
+        const holePar = tee?.pars?.[hole.number - 1] || hole.par;
+        return `
+        <button
+          class="${!showCourseOverview && hole.number === selectedHole.number ? "active" : ""}"
+          data-action="course-guide-hole"
+          data-hole="${hole.number}"
+          type="button"
+          aria-label="Hole ${hole.number}"
+          ${!showCourseOverview && hole.number === selectedHole.number ? `aria-current="page"` : ""}
+        >
+          <span class="course-hole-number">${hole.number}</span>
+          <span class="course-hole-par">Par ${holePar}</span>
+        </button>
+      `;
+      }).join("")}
+    </nav>
+  `;
+}
+
+function CourseGuideOverview(config, holeStrip) {
+  return `
+    <section class="course-guide-overview">
+      ${holeStrip}
+      <header class="course-overview-hero">
+        <h2>${escapeHtml(config.pageTitle)}</h2>
+        <p>${escapeHtml(config.summary)}</p>
+      </header>
+      <figure class="course-overview-image">
+        <img src="${escapeHtml(config.heroImage)}" alt="${escapeHtml(config.pageTitle)} course view" />
+      </figure>
+      ${CourseGuideFactPills(config)}
+      <section class="course-overview-copy">
+        <p class="kicker">About the Course</p>
+        <p>${escapeHtml(config.overview)}</p>
+      </section>
+      <blockquote class="course-overview-quote">
+        <span aria-hidden="true">“</span>
+        <p>${escapeHtml(config.quote)}</p>
+        <cite>${escapeHtml(config.quoteByline || "The Nudgers Guide")}</cite>
+      </blockquote>
+      ${config.key === "borth" ? `
+        <div class="course-section-heading">
+          <p class="kicker">Course Films</p>
+        </div>
+        <div class="course-film-grid">
+          ${config.films.map((film) => `
+            <article class="course-media-card">
+              <div class="course-card-label"><span>Course film</span><small>${escapeHtml(film.title)}</small></div>
+              <div class="course-video-frame">
+                <iframe
+                  title="${escapeHtml(config.pageTitle)}: ${escapeHtml(film.title)}"
+                  src="https://www.youtube-nocookie.com/embed/${film.id}?rel=0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      ` : ""}
+      <div class="course-hole-footer course-overview-footer">
+        <span aria-hidden="true"></span>
+        <p>Overview</p>
+        <button data-action="course-guide-hole" data-hole="1" type="button">Hole 1 <span>→</span></button>
+      </div>
+      <footer class="course-guide-credit">
+        <p>${escapeHtml(config.credit)}</p>
+        <p>Unofficial commentary by Sergeant Maj. Errors likely; confidence total.</p>
+      </footer>
+      ${CourseGuideScorecardOverlay()}
     </section>
   `;
 }
@@ -2470,6 +2765,71 @@ const aberdoveyScorecardRows = [
   ["TOTAL", "6777", "6505", "6065", "5797", "71", ""],
 ];
 
+function courseGuideScorecardRows(config, selectedTee) {
+  const selectedPars = selectedTee?.pars || config.tees[0]?.pars || [];
+  const rows = config.holes.map((hole, index) => [
+    String(hole.number),
+    ...config.tees.map((tee) => String(tee.yards[index] || "")),
+    String(selectedPars[index] || hole.par || ""),
+    String(hole.strokeIndex || ""),
+  ]);
+
+  const summaryRow = (label, start, end) => [
+    label,
+    ...config.tees.map((tee) => String(tee.yards.slice(start, end).reduce((sum, yards) => sum + yards, 0))),
+    String(selectedPars.slice(start, end).reduce((sum, par) => sum + par, 0)),
+    "",
+  ];
+
+  rows.splice(9, 0, summaryRow("OUT", 0, 9));
+  rows.push(summaryRow("IN", 9, 18));
+  rows.push([
+    "TOTAL",
+    ...config.tees.map((tee) => String(tee.total)),
+    String(selectedPars.reduce((sum, par) => sum + par, 0)),
+    "",
+  ]);
+  return rows;
+}
+
+function CourseGuideScorecard({ closeButton = false } = {}) {
+  const config = currentCourseGuideConfig();
+  const selectedTee = selectedCourseGuideTee();
+  const headers = ["Hole", ...config.tees.map((tee) => tee.label), "Par", "SI"];
+  const rows = courseGuideScorecardRows(config, selectedTee);
+  const formatScorecardCell = (cell) => (/^\d{4,}$/.test(cell) ? Number(cell).toLocaleString("en-GB") : cell);
+  const scorecardCellClass = (index) => {
+    if (!index) return "";
+    return config.tees[index - 1]?.key || "";
+  };
+
+  return Card(`
+    <div class="scorecard-header">
+      <h3>${escapeHtml(config.scorecardTitle)}</h3>
+      ${closeButton ? `<button class="scorecard-close-button" data-action="close-course-scorecard" type="button" aria-label="Close scorecard">×</button>` : ""}
+    </div>
+    <div class="scorecard-table-wrap">
+      <table class="scorecard-table">
+        <thead>
+          <tr>
+            ${headers.map((header, index) => `<th class="${scorecardCellClass(index)}">${escapeHtml(header)}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => {
+            const totalRow = ["OUT", "IN", "TOTAL"].includes(row[0]);
+            return `
+              <tr class="${totalRow ? "total-row" : ""}">
+                ${row.map((cell, index) => `<td class="${scorecardCellClass(index)}">${escapeHtml(formatScorecardCell(cell))}</td>`).join("")}
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `, "scorecard-card");
+}
+
 function AberdoveyScorecard({ closeButton = false } = {}) {
   const headers = ["Hole", "Black", "Silver", "Gold", "Orange", "Par", "SI"];
   const scorecardCellClass = (index) => ["", "black", "silver", "gold", "orange"][index] || "";
@@ -2505,7 +2865,8 @@ const thisTourOverviewActions = [
   ["Itinerary", "calendar", "itinerary"],
   ["Packing List", "suitcase", "packing-list"],
   ["Travel Info", "plane", "travel-info"],
-  ["Course Guide", "image", "course-guide"],
+  ["Aberdovey Course Guide", "image", "aberdovey-course-guide"],
+  ["Borth Course Guide", "image", "borth-course-guide"],
   ["Tee Times", "flag", "tee-times"],
   ["Scorecards", "badge", "scorecards"],
   ["Random Nudger Generator", "shuffle", "random-nudger-generator"],
@@ -2976,30 +3337,25 @@ function continueTourPageListLine(event) {
 }
 
 function CourseGuide() {
-  const selectedHole = courseGuideHole(state.selectedCourseGuideHole || 1);
+  const config = currentCourseGuideConfig();
+  const selectedHoleNumber = Number.isFinite(Number(state.selectedCourseGuideHole)) ? Number(state.selectedCourseGuideHole) : 0;
+  const selectedHole = courseGuideHole(selectedHoleNumber || 1);
+  const showCourseOverview = selectedHoleNumber === 0;
   const previousHole = selectedHole.number > 1 ? selectedHole.number - 1 : null;
-  const nextHole = selectedHole.number < aberdoveyCourseHoles.length ? selectedHole.number + 1 : null;
+  const nextHole = selectedHole.number < config.holes.length ? selectedHole.number + 1 : null;
+  const holeTitle = selectedHole.strapline || selectedHole.title || "";
+  const videoAside = typeof config.videoAside === "function" ? config.videoAside(selectedHole) : config.videoAside;
+  const visualAside = typeof config.visualAside === "function" ? config.visualAside(selectedHole) : config.visualAside;
+  const imageAlt = typeof config.imageAlt === "function" ? config.imageAlt(selectedHole) : `${config.label} hole ${selectedHole.number}`;
+  const holeStrip = CourseGuideHoleStrip(config, showCourseOverview, selectedHole);
 
   return `
     <div class="course-guide-book">
-      <nav class="course-hole-strip" aria-label="Choose a hole">
-        ${aberdoveyCourseHoles.map((hole) => `
-          <button
-            class="${hole.number === selectedHole.number ? "active" : ""}"
-            data-action="course-guide-hole"
-            data-hole="${hole.number}"
-            type="button"
-            aria-label="Hole ${hole.number}"
-            ${hole.number === selectedHole.number ? `aria-current="page"` : ""}
-          >
-            <span class="course-hole-number">${hole.number}</span>
-            <span class="course-hole-par">Par ${hole.par}</span>
-          </button>
-        `).join("")}
-      </nav>
+      ${showCourseOverview ? CourseGuideOverview(config, holeStrip) : `
+      ${holeStrip}
       <div class="course-book-heading">
         <div>
-          <p class="kicker">Hole ${selectedHole.number} · ${escapeHtml(selectedHole.strapline)}</p>
+          <p class="kicker">Hole ${selectedHole.number} · ${escapeHtml(holeTitle)}</p>
         </div>
         <dl class="course-book-facts">
           <div><dt>Par</dt><dd>${selectedHole.par}</dd></div>
@@ -3008,11 +3364,12 @@ function CourseGuide() {
         </dl>
       </div>
       <div class="course-media-grid">
+        ${config.key !== "borth" ? `
         <article class="course-media-card">
-          <div class="course-card-label"><span>Official flyover</span><small>Press play</small></div>
+          <div class="course-card-label"><span>${escapeHtml(config.videoLabel)}</span><small>${escapeHtml(videoAside)}</small></div>
           <div class="course-video-frame">
             <iframe
-              title="Aberdovey hole ${selectedHole.number} flyover"
+              title="${escapeHtml(config.label)} hole ${selectedHole.number} video"
               src="https://www.youtube-nocookie.com/embed/${selectedHole.youtubeId}?rel=0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerpolicy="strict-origin-when-cross-origin"
@@ -3020,10 +3377,11 @@ function CourseGuide() {
             ></iframe>
           </div>
         </article>
-        <article class="course-media-card">
-          <div class="course-card-label"><span>Hole map</span><small>Not to scale after four pints</small></div>
-          <div class="course-map-frame">
-            <img src="${selectedHole.image}" alt="Official map of Aberdovey hole ${selectedHole.number}" />
+        ` : ""}
+        <article class="course-media-card ${config.key === "borth" ? "course-photo-card" : ""}">
+          <div class="course-card-label"><span>${escapeHtml(config.visualLabel)}</span><small>${escapeHtml(visualAside)}</small></div>
+          <div class="course-map-frame ${config.key === "borth" ? "course-photo-frame" : ""}">
+            <img src="${selectedHole.image}" alt="${escapeHtml(imageAlt)}" />
           </div>
         </article>
       </div>
@@ -3046,12 +3404,14 @@ function CourseGuide() {
         </article>
       </div>
       <div class="course-hole-footer">
-        ${previousHole ? `
+        ${selectedHole.number === 1 ? `
+          <button data-action="course-guide-hole" data-hole="0" type="button"><span>←</span> Overview</button>
+        ` : previousHole ? `
           <button data-action="course-guide-hole" data-hole="${previousHole}" type="button"><span>←</span> Hole ${previousHole}</button>
         ` : `
           <button data-action="overview-back" type="button"><span>←</span> Cover</button>
         `}
-        <p>${selectedHole.number} / ${aberdoveyCourseHoles.length}</p>
+        <p>${selectedHole.number} / ${config.holes.length}</p>
         ${nextHole ? `
           <button data-action="course-guide-hole" data-hole="${nextHole}" type="button">Hole ${nextHole} <span>→</span></button>
         ` : `
@@ -3059,10 +3419,11 @@ function CourseGuide() {
         `}
       </div>
       <footer class="course-guide-credit">
-        <p>Course facts, maps and flyovers credited to Aberdovey Golf Club.</p>
+        <p>${escapeHtml(config.credit)}</p>
         <p>Unofficial commentary by Sergeant Maj. Errors likely; confidence total.</p>
       </footer>
       ${CourseGuideScorecardOverlay()}
+      `}
     </div>
   `;
 }
@@ -3097,7 +3458,7 @@ function ThisTourOverviewFeature() {
     `;
   }
 
-  if (pageKey === "course-guide") {
+  if (isCourseGuidePanel(pageKey)) {
     return `
       <section class="overview-feature-screen course-guide-screen">
         ${CourseGuideHeader()}
@@ -5333,7 +5694,7 @@ function restoreScrollPosition() {
 }
 
 function restoreCourseGuideStripScroll() {
-  if (state.thisTourOverviewPanel !== "course-guide") return;
+  if (!isCourseGuidePanel(state.thisTourOverviewPanel)) return;
   const scrollLeft = Number(state.courseGuideStripScrollLeft) || 0;
   if (!scrollLeft) return;
   requestAnimationFrame(() => {
@@ -5408,7 +5769,7 @@ app.addEventListener("click", (event) => {
     return;
   }
   const action = target.dataset.action;
-  if (action === "course-guide-tee") return;
+  if (action === "course-guide-tee" || action === "course-guide-course") return;
   if (action === "tab") {
     if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
     randomNudgerSpinTimer = null;
@@ -5546,7 +5907,7 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
     state.thisTourOverviewPanel = target.dataset.view;
-    state.selectedCourseGuideHole = state.thisTourOverviewPanel === "course-guide" ? 1 : null;
+    state.selectedCourseGuideHole = isCourseGuidePanel(state.thisTourOverviewPanel) ? 0 : null;
     state.courseGuideStripScrollLeft = 0;
     state.courseGuideScorecardOpen = false;
     if (state.thisTourOverviewPanel === "random-nudger-generator") {
@@ -5554,7 +5915,7 @@ app.addEventListener("click", (event) => {
       randomNudgerSpinTimer = null;
       state.randomNudgerDraw = emptyRandomNudgerDraw(state.randomNudgerDraw?.mode || "pairs");
       loadTourProfiles(tours[0]?.supabaseId);
-    } else if (!["scorecards", "course-guide"].includes(state.thisTourOverviewPanel)) {
+    } else if (!["scorecards"].includes(state.thisTourOverviewPanel) && !isCourseGuidePanel(state.thisTourOverviewPanel)) {
       loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
     }
   }
@@ -5570,9 +5931,10 @@ app.addEventListener("click", (event) => {
   if (action === "course-guide-hole") {
     const content = document.querySelector(".content");
     const strip = document.querySelector(".course-hole-strip");
+    const holeNumber = Number(target.dataset.hole);
     state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
     state.courseGuideStripScrollLeft = strip ? Math.round(strip.scrollLeft) : 0;
-    state.selectedCourseGuideHole = Number(target.dataset.hole) || null;
+    state.selectedCourseGuideHole = Number.isFinite(holeNumber) ? holeNumber : null;
   }
   if (action === "course-guide-grid") {
     state.restoredScrollTop = 0;
@@ -5846,6 +6208,15 @@ app.addEventListener("change", (event) => {
     state.selectedCourseGuideTee = target.value;
     state.restoredScrollTop = document.querySelector(".content")?.scrollTop || 0;
     state.courseGuideStripScrollLeft = strip ? Math.round(strip.scrollLeft) : 0;
+    render();
+    persistRoute();
+  }
+  if (target.dataset.action === "course-guide-course") {
+    state.thisTourOverviewPanel = target.value;
+    state.selectedCourseGuideHole = 0;
+    state.courseGuideStripScrollLeft = 0;
+    state.courseGuideScorecardOpen = false;
+    state.restoredScrollTop = 0;
     render();
     persistRoute();
   }
