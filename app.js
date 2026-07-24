@@ -1962,7 +1962,6 @@ function CourseGuideCoursePicker() {
   const selectedCourse = currentCourseGuideKey();
   return `
     <label class="course-course-picker">
-      <span>Course</span>
       <select data-action="course-guide-course" aria-label="Select course">
         <option value="aberdovey-course-guide" ${selectedCourse === "aberdovey" ? "selected" : ""}>Aberdovey</option>
         <option value="borth-course-guide" ${selectedCourse === "borth" ? "selected" : ""}>Borth</option>
