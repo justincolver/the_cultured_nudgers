@@ -1004,7 +1004,7 @@ async function loadSupabaseData() {
       state.tab === "this-tour" &&
       state.detailSubTab === "Overview" &&
       state.thisTourOverviewPanel &&
-      !["scorecards", "random-nudger-generator"].includes(state.thisTourOverviewPanel)
+      !["scorecards", "random-nudger-generator", "course-guide"].includes(state.thisTourOverviewPanel)
     ) {
       loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
     }
@@ -1041,6 +1041,7 @@ let state = {
   individualLoadingPlayerId: null,
   individualError: "",
   openIndividualPicker: false,
+  individualDetailKey: "",
   statsOverviewRows: null,
   statsOverviewLoading: false,
   statsOverviewError: "",
@@ -1082,8 +1083,13 @@ let state = {
   tourProfilesLoadingTourId: null,
   tourProfilesError: "",
   expandedTourProfiles: {},
+  tourProfilePickerOpen: false,
   thisTourOverviewPanel: "",
   thisTourOverviewYear: null,
+  selectedCourseGuideHole: null,
+  selectedCourseGuideTee: "gold",
+  courseGuideStripScrollLeft: 0,
+  courseGuideScorecardOpen: false,
   tourPagesByKey: {},
   tourPageLoadingKey: null,
   tourPageSavingKey: null,
@@ -1121,7 +1127,7 @@ const app = document.querySelector("#app");
 let waitingServiceWorker = null;
 let refreshingForUpdate = false;
 let serviceWorkerRegistration = null;
-let lastAutoUpdateCheckAt = 0;
+let appUpdateCheckInFlight = false;
 let randomNudgerSpinTimer = null;
 
 function icon(name) {
@@ -1129,6 +1135,7 @@ function icon(name) {
     home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
     badge: '<rect x="5" y="4" width="14" height="16" rx="3"/><path d="M9 9h6M9 13l2 2 4-5"/>',
     calendar: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
+    scorecard: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M9.5 7h5M9.5 11h5M9.5 15h3"/><path d="M10 3.5V2h4v1.5"/>',
     chart: '<path d="M5 19V9M12 19V5M19 19v-8"/>',
     pin: '<path d="M12 21s7-5.3 7-11a7 7 0 0 0-14 0c0 5.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 14.5-4 16 0"/>',
@@ -1450,6 +1457,357 @@ function StatCard(label, value, detail, image) {
 
 function ActionTile(label, iconName, view) {
   return `<button class="action-tile" data-action="overview-panel" data-view="${view}">${icon(iconName)}<span>${label}</span></button>`;
+}
+
+const aberdoveyCourseHoles = [
+  {
+    number: 1,
+    title: "Hole One",
+    par: 4,
+    yards: 441,
+    strokeIndex: 6,
+    image: "/assets/images/aberdovey/hole-1.jpg",
+    youtubeId: "yoQ9lX6WcMg",
+    tip: "A challenging opening hole where precision is paramount. Tee off aiming for the right half of the pump house, setting up a demanding long iron approach to a green guarded by subtle undulations and sand traps. Escaping with a par is a notable accomplishment here.",
+  },
+  {
+    number: 2,
+    title: "Hole Two",
+    par: 4,
+    yards: 332,
+    strokeIndex: 11,
+    image: "/assets/images/aberdovey/hole-2.jpg",
+    youtubeId: "BshQj6C7m2M",
+    tip: "Strategize your drive to favour the right side of the fairway for a favourable stance. A well-placed tee shot opens the opportunity for a birdie attempt on this relatively short par 4. Be mindful of incoming shots from the adjacent 17th hole.",
+  },
+  {
+    number: 3,
+    title: "Hole Three",
+    par: 3,
+    yards: 166,
+    strokeIndex: 18,
+    image: "/assets/images/aberdovey/hole-3.jpg",
+    youtubeId: "D4d9Khr_U2Y",
+    tip: "Known as \"Cader,\" this seemingly straightforward par 3 demands accuracy off the tee to a basin green. Any shot short of the green presents a challenging recovery for par, making precision essential for success.",
+  },
+  {
+    number: 4,
+    title: "Hole Four",
+    par: 4,
+    yards: 425,
+    strokeIndex: 4,
+    image: "/assets/images/aberdovey/hole-4.jpg",
+    youtubeId: "0VicnK4coRc",
+    tip: "Navigate the fairway with a precise drive to evade the trio of fairway bunkers on the right. A left-sided approach is advised to utilize the green's natural slope, guiding the ball toward the centre while avoiding greenside bunkers.",
+  },
+  {
+    number: 5,
+    title: "Hole Five",
+    par: 3,
+    yards: 198,
+    strokeIndex: 10,
+    image: "/assets/images/aberdovey/hole-5.jpg",
+    youtubeId: "UYIwzaYV3h4",
+    tip: "Exercise caution with club selection on this hole, as out of bounds lurks behind the green. Negotiate the undulating green guarded by bunkers on either side, mindful of players on the adjacent 15th hole.",
+  },
+  {
+    number: 6,
+    title: "Hole Six",
+    par: 4,
+    yards: 438,
+    strokeIndex: 3,
+    image: "/assets/images/aberdovey/hole-6.jpg",
+    youtubeId: "HutQBmVXDRk",
+    tip: "A tee shot favouring the left side is essential, with out of bounds looming on the right. Precision is again key on the approach to contend with the challenging undulations of the green. Reading the green accurately is crucial for a successful putt.",
+  },
+  {
+    number: 7,
+    title: "Hole Seven",
+    par: 5,
+    yards: 539,
+    strokeIndex: 16,
+    image: "/assets/images/aberdovey/hole-7.jpg",
+    youtubeId: "wtSXvGgY9uw",
+    tip: "The first par 5 offers a prime opportunity for birdie. Optimal positioning on the left side of the fairway sets up a more manageable second shot. Careful club selection is crucial for navigating the elongated green, particularly paying attention to pin placement.",
+  },
+  {
+    number: 8,
+    title: "Hole Eight",
+    par: 4,
+    yards: 331,
+    strokeIndex: 14,
+    image: "/assets/images/aberdovey/hole-8.jpg",
+    youtubeId: "Lm9t3x2dtTo",
+    tip: "Choose the conservative approach with a long iron or fairway wood to avoid the array of fairway bunkers. Rely on precise wedge play for a chance of a birdie on this challenging par 4.",
+  },
+  {
+    number: 9,
+    title: "Hole Nine",
+    par: 3,
+    yards: 157,
+    strokeIndex: 17,
+    image: "/assets/images/aberdovey/hole-9.jpg",
+    youtubeId: "0cpt-dXR72E",
+    tip: "Like Hole 3, select your club wisely to reach the expansive green. Missing the green requires a skilful recovery for par, emphasizing the importance of accuracy on approach shots.",
+  },
+  {
+    number: 10,
+    title: "Hole Ten",
+    par: 4,
+    yards: 450,
+    strokeIndex: 2,
+    image: "/assets/images/aberdovey/hole-10.jpg",
+    youtubeId: "dIBIcw2PzAM",
+    tip: "A critical tee shot that demands accuracy, particularly with hazards lining the right side. Take note of wind direction before teeing off to navigate this challenging par 4. Favouring the right side of the green provides a safer approach to avoid the pot bunkers.",
+  },
+  {
+    number: 11,
+    title: "Hole Eleven",
+    par: 4,
+    yards: 446,
+    strokeIndex: 7,
+    image: "/assets/images/aberdovey/hole-11.jpg",
+    youtubeId: "MQtKIqTGGOs",
+    tip: "A strategic tee shot is imperative, avoiding the right side at all costs. For those confident in their abilities, clearing the centre fairway bunker is the optimal play. Approach shots must be precise, accounting for the challenging green contours. Securing par here is a commendable achievement.",
+  },
+  {
+    number: 12,
+    title: "Hole Twelve",
+    par: 3,
+    yards: 145,
+    strokeIndex: 12,
+    image: "/assets/images/aberdovey/hole-12.jpg",
+    youtubeId: "RFPogEsGDiQ",
+    tip: "Embrace the challenge of the signature hole, where precision is paramount. With severe slopes to the left and a menacing beach to the right, club selection is critical to find the widest section of the green. Be mindful of changing wind conditions while savouring the breath-taking scenery.",
+  },
+  {
+    number: 13,
+    title: "Hole Thirteen",
+    par: 5,
+    yards: 567,
+    strokeIndex: 1,
+    image: "/assets/images/aberdovey/hole-13.jpg",
+    youtubeId: "DlGlhnSNGBE",
+    tip: "As the longest hole on the course, strategic planning is essential. Aim left off the tee to avoid the fairway bunkers on the right. Consider laying up to steer clear of the deep fairway hazards, ensuring a safe approach to this challenging par 5.",
+  },
+  {
+    number: 14,
+    title: "Hole Fourteen",
+    par: 4,
+    yards: 438,
+    strokeIndex: 8,
+    image: "/assets/images/aberdovey/hole-14.jpg",
+    youtubeId: "Rb4b7gtbyP0",
+    tip: "Display bravery with a tee shot down the left side to set up a favourable approach to the green. An accurate second shot to the right side avoids the penalty area lurking on the left, providing a clear path to potential birdie opportunities.",
+  },
+  {
+    number: 15,
+    title: "Hole Fifteen",
+    par: 5,
+    yards: 499,
+    strokeIndex: 13,
+    image: "/assets/images/aberdovey/hole-15.jpg",
+    youtubeId: "6leHRLHXO5Q",
+    tip: "Precision off the tee is key, favouring the left half to bypass fairway bunkers and set up an ideal angle for the second shot. Navigate the narrow entry to the well-protected green, being wary of players on the adjacent 5th hole.",
+  },
+  {
+    number: 16,
+    title: "Hole Sixteen",
+    par: 4,
+    yards: 285,
+    strokeIndex: 15,
+    image: "/assets/images/aberdovey/hole-16.jpg",
+    youtubeId: "VUztIsvosu4",
+    tip: "Assess the risk and reward on this enticing par 4, where longer hitters can opt for an aggressive approach to the green. Alternatively, a strategic lay-up sets up a manageable approach shot to the narrow green, flanked by out of bounds, bunkers and penalty areas.",
+  },
+  {
+    number: 17,
+    title: "Hole Seventeen",
+    par: 4,
+    yards: 429,
+    strokeIndex: 9,
+    image: "/assets/images/aberdovey/hole-17.jpg",
+    youtubeId: "JfIVpPnHxMc",
+    tip: "Aim for the right side of the fairway for a clear view of the green on this challenging par 4. Beware of fairway bunkers lining the right side and ensure precise club selection for the approach to the expansive green, granting priority to players on the 2nd green.",
+  },
+  {
+    number: 18,
+    title: "Hole Eighteen",
+    par: 4,
+    yards: 491,
+    strokeIndex: 5,
+    image: "/assets/images/aberdovey/hole-18.jpg",
+    youtubeId: "Dt5j3JgPR0E",
+    tip: "Finish strong on one of Welsh golf's finest closing holes. A precise drive down the right side avoids penalty areas to the left, setting up a clear path to the heart of the green. Exercise caution with out of bounds lurking near the putting surface, securing a well-deserved par to conclude your round.",
+  },
+];
+
+const aberdoveyCourseGuideCopy = {
+  1: {
+    strapline: "Opening Arguments",
+    yards: 446,
+    official: "A long opening par four. The sensible line is towards the right half of the pump house, leaving a demanding approach to a subtly protected green. Four is an excellent start.",
+    maj: "The card begins with 446 yards of confidence removal. Pick the pump house, accept that the opening swing may contain several moving parts not seen on the range, and get the ball in play. Somebody will immediately announce, “I never normally hit it there.” That statement has never improved a lie. Bogey keeps you in the conversation; par earns the right to be unbearable until lunch.",
+  },
+  2: {
+    strapline: "False Sense of Security",
+    yards: 332,
+    official: "Favour the right side of the fairway for the cleanest stance into this short par four. It is a genuine birdie chance, but keep an eye out for shots arriving from the 17th.",
+    maj: "A short par four and therefore a compulsory attempt to make it difficult. The right half is the grown-up route. The ceremonial 3-wood bunt may now make its first appearance while everybody else debates whether driver is “actually the percentage play.” It isn’t. Find grass, flick a wedge on and try not to become collateral damage from the 17th.",
+  },
+  3: {
+    strapline: "The Easy One",
+    yards: 166,
+    official: "The apparently friendly Cader is a blind, basin-style par three. Find the putting surface: coming up short leaves a far nastier recovery than the card suggests.",
+    maj: "Stroke index 18: the official easiest hole on the course, which makes it perfectly engineered to ruin a Nudger’s mood. It looks welcoming, disappears into a basin and invites one lazy strike. Take enough club, aim at the middle and save the artistry for explaining afterwards why the wind changed during your backswing.",
+  },
+  4: {
+    strapline: "Left, or Wrong",
+    yards: 399,
+    official: "Three fairway bunkers guard the right, so the useful approach comes from the left. The ground can feed a well-shaped shot onto the green, provided the greenside traps are avoided.",
+    maj: "There are three bunkers down the right, so the strategic menu is admirably concise: left, or wrong. Someone will say they can carry them. That person should be allowed to continue uninterrupted so the rest of the group can enjoy the evidence. Use the slope, find the green and move on before anyone begins an archaeological survey of the final trap.",
+  },
+  5: {
+    strapline: "Commit to the Number",
+    yards: 198,
+    official: "Club selection is everything with out of bounds waiting beyond the green. Bunkers flank a lively putting surface, and players on the 15th may also enter proceedings.",
+    maj: "Out of bounds long on a near-200-yard par three is precisely the sort of detail that makes a smooth swing eight per cent harder. Commit to the number, not the fear. The green will still have opinions when you arrive. Also check the 15th before launching: taking out another Nudger is poor form unless the match situation absolutely demands it.",
+  },
+  6: {
+    strapline: "No Room for a Little Cut",
+    yards: 404,
+    official: "The tee shot belongs on the left. Out of bounds patrols the right and the green has enough movement to expose a careless approach or an optimistic read.",
+    maj: "The official instruction is to favour the left. This is not permission to start a “little cut” over the out-of-bounds line and wait for physics to become sentimental. Put the tee shot somewhere boring, then give the contours of the green the respect normally reserved for a disputed Golf GameBook handicap.",
+  },
+  7: {
+    strapline: "Birdie Vocabulary",
+    yards: 512,
+    official: "The first par five offers a proper birdie opportunity. Position the ball on the left, then respect the long green: the pin position should decide the final club.",
+    maj: "The first par five brings birdie into the vocabulary and common sense quietly leaves the building. Left is the proper place to start. From there, advance it without performing a fairway-wood audition from a lie that needs gardening equipment. The green is long enough to turn the wrong club into a three-putt and somebody else’s birdie into a personal attack.",
+  },
+  8: {
+    strapline: "Emotional Maturity Required",
+    yards: 331,
+    official: "A conservative long iron or fairway wood can remove the fairway bunkers and leave a straightforward wedge. The hole rewards restraint more reliably than theatre.",
+    maj: "A positional club followed by a wedge: simple, repeatable and emotionally unacceptable to at least half the field. The fairway bunkers exist mainly to receive those who insist they “didn’t come all this way to lay up.” They did, in fact, come all this way to score a point. Choose the club that leaves the speech unnecessary.",
+  },
+  9: {
+    strapline: "Halfway Arithmetic",
+    yards: 157,
+    official: "The green is generous but club choice matters. Missing it turns a simple-looking par three into a difficult recovery just before the turn.",
+    maj: "One last par three before the halfway arithmetic begins. The target is generous, so do not invent a heroic new yardage because the eighth was disappointing. Middle of the green, two putts, refreshments. Anybody making four must buy the first round; anybody making two may describe it, once, without visual aids.",
+  },
+  10: {
+    strapline: "The Serious Nine",
+    yards: 412,
+    official: "Accuracy from the tee is essential, with trouble concentrated down the right. Check the wind, then favour the safer right portion of the green to take the pot bunkers out of play.",
+    maj: "Stroke index two and the beginning of the serious back nine. “Check the wind” means more than throwing grass into the air and then hitting the club you had already chosen. Keep the tee ball out of the right-hand trouble and aim for the safer portion of green. This is a hole for a number, not a content opportunity.",
+  },
+  11: {
+    strapline: "Confidence v Competence",
+    yards: 411,
+    official: "Right is the side to avoid. The confident line carries the central bunker, after which the contoured green still demands a precise approach. Par is very respectable.",
+    maj: "Right is forbidden, yet will remain extremely popular. The central bunker asks a useful question: are you genuinely carrying it, or are you carrying the memory of one good drive in Portugal? Choose honestly. The green has enough shape to make par feel stolen, which is exactly how match-play pars should feel.",
+  },
+  12: {
+    strapline: "Postcard, Then Golf",
+    yards: 145,
+    official: "Aberdovey’s signature par three falls away sharply on the left with the beach waiting right. Aim for the widest section of green and let the wind—not the scenery—have the final say.",
+    maj: "Camera out, shoulders relaxed, beach admired—and then put the phone away before somebody films a hosel rocket towards Cardigan Bay. Find the widest slice of green and take the wind seriously. Nobody is permitted to begin a 20-minute ball search on the Welsh coastline. There are limits, even on a Nudgers tour.",
+  },
+  13: {
+    strapline: "Three Sensible Shots",
+    yards: 537,
+    official: "The longest hole and stroke index one. A tee shot towards the left avoids the right-side bunkers; from there, plot a lay-up around the deep fairway hazards before attacking.",
+    maj: "The longest hole, stroke index one and a magnificent opportunity to discover whether anyone can play three sensible shots consecutively. Start left, lay up around the proper hazards and leave a favourite number. Someone will inevitably reach for 3-wood from a lie with more sand than grass. Give them room and record the outcome for the report.",
+  },
+  14: {
+    strapline: "Changing Sides",
+    yards: 396,
+    official: "The braver tee line is left, while the approach generally belongs on the right to stay clear of the penalty area guarding the other side.",
+    maj: "Aberdovey now asks you to move from left off the tee to right on the approach, like a committee that has reconsidered its own minutes. The brave line is useful; the stupid line merely looks similar from 200 yards away. Stay clear of the penalty area and let the opponent manufacture the drama.",
+  },
+  15: {
+    strapline: "Incoming Traffic",
+    yards: 499,
+    official: "Use the left side from the tee to avoid the fairway bunkers. The entrance to the well-defended green is narrow, and traffic from the 5th can add a little local colour.",
+    maj: "Left from the tee, then through a narrow entrance to the green. Straightforward—until a ball from the 5th arrives carrying news from an earlier, more hopeful version of the tour. A loud “fore” is good etiquette; a quiet “that might actually be mine” is not. Keep the approach below the hole if possible and depart briskly.",
+  },
+  16: {
+    strapline: "Male Optimism",
+    yards: 285,
+    official: "A short, driveable par four for the longest hitters and a positional hole for everybody else. Whether attacking or laying up, a narrow green, bunkers, penalty area and out of bounds all demand respect.",
+    maj: "Driveable, short and surrounded by enough jeopardy to expose every form of male optimism. The lay-up is obvious and will therefore be treated as an insult. If attacking, commit fully; if positioning, choose an actual number. A confident practice swing may have more range than half the field, but a wedge can still make four here.",
+  },
+  17: {
+    strapline: "Do Not Count Yet",
+    yards: 429,
+    official: "The right side of the tee offers the clearest view, although fairway bunkers also wait there. The green is large; players on the 2nd have priority where the holes meet.",
+    maj: "The clubhouse begins to feel close, which is exactly when golfers start mentally writing their score before the work is finished. Use the right-hand view, avoid the bunkers and give way to the 2nd. Nobody needs to know what you are “on for.” The golf gods have excellent hearing and a vicious sense of timing.",
+  },
+  18: {
+    strapline: "The Long Goodbye",
+    yards: 446,
+    official: "A fine, long closing par four. Keep the drive right to avoid the penalty area left, then remember that out of bounds crowds the green. A closing par is a result.",
+    maj: "Do not perform scorecard arithmetic on this tee. A closing par four of proper length can smell fear, fatigue and a prematurely composed victory message. Drive to the right, stay clear of both varieties of disaster and accept that four is heroic. Make par and the story will improve annually; make double and the wind was clearly outrageous.",
+  },
+};
+
+const aberdoveyCourseTees = [
+  { key: "black", label: "Black", total: 6777, yards: [441, 332, 166, 425, 198, 438, 539, 331, 157, 450, 446, 145, 567, 438, 499, 285, 429, 491] },
+  { key: "silver", label: "Silver", total: 6505, yards: [446, 332, 166, 399, 198, 404, 512, 331, 157, 412, 411, 145, 537, 396, 499, 285, 429, 446] },
+  { key: "gold", label: "Gold", total: 6065, yards: [418, 315, 152, 370, 184, 332, 473, 318, 151, 407, 373, 128, 503, 377, 470, 275, 402, 417] },
+  { key: "orange", label: "Orange", total: 5797, yards: [414, 278, 133, 356, 168, 327, 460, 308, 145, 403, 329, 123, 495, 362, 422, 266, 399, 409] },
+];
+
+function selectedCourseGuideTee() {
+  return aberdoveyCourseTees.find((tee) => tee.key === state.selectedCourseGuideTee) || aberdoveyCourseTees.find((tee) => tee.key === "gold") || aberdoveyCourseTees[0];
+}
+
+function courseGuideHole(number = 1) {
+  const baseHole = aberdoveyCourseHoles.find((hole) => hole.number === Number(number)) || aberdoveyCourseHoles[0];
+  const copy = aberdoveyCourseGuideCopy[baseHole.number] || {};
+  const tee = selectedCourseGuideTee();
+  return {
+    ...baseHole,
+    ...copy,
+    yards: tee?.yards?.[baseHole.number - 1] || copy.yards || baseHole.yards,
+  };
+}
+
+function CourseGuideTeePicker() {
+  const selectedTee = selectedCourseGuideTee();
+  return `
+    <label class="course-tee-picker">
+      <span>Tee</span>
+      <select data-action="course-guide-tee" aria-label="Select tee">
+        ${aberdoveyCourseTees.map((tee) => `
+          <option value="${tee.key}" ${tee.key === selectedTee?.key ? "selected" : ""}>${tee.label} · ${tee.total} yds</option>
+        `).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function CourseGuideHeader() {
+  return `
+    <div class="course-guide-header">
+      <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
+      ${CourseGuideTeePicker()}
+      <button class="course-scorecard-button" data-action="open-course-scorecard" type="button">${icon("scorecard")}<span>View Scorecard</span></button>
+    </div>
+  `;
+}
+
+function CourseGuideScorecardOverlay() {
+  if (!state.courseGuideScorecardOpen) return "";
+  return `
+    <section class="course-scorecard-overlay" role="dialog" aria-modal="true" aria-label="Aberdovey scorecard">
+      <div class="course-scorecard-modal">
+        <div class="course-scorecard-modal-body">${AberdoveyScorecard({ closeButton: true })}</div>
+      </div>
+    </section>
+  `;
 }
 
 function HandicapGraph(history = []) {
@@ -2089,42 +2447,43 @@ function TourOverview(tour) {
 }
 
 const aberdoveyScorecardRows = [
-  ["1", "441", "441", "420", "4", "10"],
-  ["2", "332", "332", "310", "4", "8"],
-  ["3", "173", "173", "157", "3", "17"],
-  ["4", "401", "401", "374", "4", "3"],
-  ["5", "202", "202", "193", "3", "13"],
-  ["6", "431", "402", "331", "4", "6"],
-  ["7", "518", "482", "470", "5", "2"],
-  ["8", "335", "335", "310", "4", "15"],
-  ["9", "160", "160", "156", "3", "12"],
-  ["OUT", "2993", "2928", "2721", "34", ""],
-  ["10", "440", "415", "408", "4", "5"],
-  ["11", "407", "407", "370", "4", "9"],
-  ["12", "149", "149", "131", "3", "18"],
-  ["13", "557", "530", "509", "5", "1"],
-  ["14", "401", "389", "383", "4", "11"],
-  ["15", "509", "509", "477", "5", "7"],
-  ["16", "288", "288", "281", "4", "16"],
-  ["17", "428", "428", "405", "4", "4"],
-  ["18", "443", "443", "419", "4", "14"],
-  ["IN", "3622", "3558", "3383", "37", ""],
-  ["TOTAL", "6615", "6486", "6104", "71", ""],
+  ["1", "441", "446", "418", "414", "4", "6"],
+  ["2", "332", "332", "315", "278", "4", "11"],
+  ["3", "166", "166", "152", "133", "3", "18"],
+  ["4", "425", "399", "370", "356", "4", "4"],
+  ["5", "198", "198", "184", "168", "3", "10"],
+  ["6", "438", "404", "332", "327", "4", "3"],
+  ["7", "539", "512", "473", "460", "5", "16"],
+  ["8", "331", "331", "318", "308", "4", "14"],
+  ["9", "157", "157", "151", "145", "3", "17"],
+  ["OUT", "3027", "2945", "2713", "2589", "34", ""],
+  ["10", "450", "412", "407", "403", "4", "2"],
+  ["11", "446", "411", "373", "329", "4", "7"],
+  ["12", "145", "145", "128", "123", "3", "12"],
+  ["13", "567", "537", "503", "495", "5", "1"],
+  ["14", "438", "396", "377", "362", "4", "8"],
+  ["15", "499", "499", "470", "422", "5", "13"],
+  ["16", "285", "285", "275", "266", "4", "15"],
+  ["17", "429", "429", "402", "399", "4", "9"],
+  ["18", "491", "446", "417", "409", "4", "5"],
+  ["IN", "3750", "3560", "3352", "3208", "37", ""],
+  ["TOTAL", "6777", "6505", "6065", "5797", "71", ""],
 ];
 
-function AberdoveyScorecard() {
-  const headers = ["Hole", "Darwin", "Medal", "Mens", "Par", "SI"];
+function AberdoveyScorecard({ closeButton = false } = {}) {
+  const headers = ["Hole", "Black", "Silver", "Gold", "Orange", "Par", "SI"];
+  const scorecardCellClass = (index) => ["", "black", "silver", "gold", "orange"][index] || "";
   const formatScorecardCell = (cell) => (/^\d{4,}$/.test(cell) ? Number(cell).toLocaleString("en-GB") : cell);
   return Card(`
     <div class="scorecard-header">
-      <span class="eyebrow">Scorecards</span>
-      <h3>Aberdovey Golf Course</h3>
+      <h3>Scorecard: Aberdovey Golf Club</h3>
+      ${closeButton ? `<button class="scorecard-close-button" data-action="close-course-scorecard" type="button" aria-label="Close scorecard">×</button>` : ""}
     </div>
     <div class="scorecard-table-wrap">
       <table class="scorecard-table">
         <thead>
           <tr>
-            ${headers.map((header, index) => `<th class="${index === 1 ? "darwin" : index === 2 ? "medal-white" : index === 3 ? "mens-yellow" : ""}">${header}</th>`).join("")}
+            ${headers.map((header, index) => `<th class="${scorecardCellClass(index)}">${header}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
@@ -2132,7 +2491,7 @@ function AberdoveyScorecard() {
             const totalRow = ["OUT", "IN", "TOTAL"].includes(row[0]);
             return `
               <tr class="${totalRow ? "total-row" : ""}">
-                ${row.map((cell, index) => `<td class="${index === 1 ? "darwin" : index === 2 ? "medal-white" : index === 3 ? "mens-yellow" : ""}">${escapeHtml(formatScorecardCell(cell))}</td>`).join("")}
+                ${row.map((cell, index) => `<td class="${scorecardCellClass(index)}">${escapeHtml(formatScorecardCell(cell))}</td>`).join("")}
               </tr>
             `;
           }).join("")}
@@ -2146,6 +2505,7 @@ const thisTourOverviewActions = [
   ["Itinerary", "calendar", "itinerary"],
   ["Packing List", "suitcase", "packing-list"],
   ["Travel Info", "plane", "travel-info"],
+  ["Course Guide", "image", "course-guide"],
   ["Tee Times", "flag", "tee-times"],
   ["Scorecards", "badge", "scorecards"],
   ["Random Nudger Generator", "shuffle", "random-nudger-generator"],
@@ -2615,6 +2975,98 @@ function continueTourPageListLine(event) {
   updateTourPageDraftFromEditor();
 }
 
+function CourseGuide() {
+  const selectedHole = courseGuideHole(state.selectedCourseGuideHole || 1);
+  const previousHole = selectedHole.number > 1 ? selectedHole.number - 1 : null;
+  const nextHole = selectedHole.number < aberdoveyCourseHoles.length ? selectedHole.number + 1 : null;
+
+  return `
+    <div class="course-guide-book">
+      <nav class="course-hole-strip" aria-label="Choose a hole">
+        ${aberdoveyCourseHoles.map((hole) => `
+          <button
+            class="${hole.number === selectedHole.number ? "active" : ""}"
+            data-action="course-guide-hole"
+            data-hole="${hole.number}"
+            type="button"
+            aria-label="Hole ${hole.number}"
+            ${hole.number === selectedHole.number ? `aria-current="page"` : ""}
+          >
+            <span class="course-hole-number">${hole.number}</span>
+            <span class="course-hole-par">Par ${hole.par}</span>
+          </button>
+        `).join("")}
+      </nav>
+      <div class="course-book-heading">
+        <div>
+          <p class="kicker">Hole ${selectedHole.number} · ${escapeHtml(selectedHole.strapline)}</p>
+        </div>
+        <dl class="course-book-facts">
+          <div><dt>Par</dt><dd>${selectedHole.par}</dd></div>
+          <div><dt>Yards</dt><dd>${selectedHole.yards}</dd></div>
+          <div><dt>Index</dt><dd>${selectedHole.strokeIndex}</dd></div>
+        </dl>
+      </div>
+      <div class="course-media-grid">
+        <article class="course-media-card">
+          <div class="course-card-label"><span>Official flyover</span><small>Press play</small></div>
+          <div class="course-video-frame">
+            <iframe
+              title="Aberdovey hole ${selectedHole.number} flyover"
+              src="https://www.youtube-nocookie.com/embed/${selectedHole.youtubeId}?rel=0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allowfullscreen
+            ></iframe>
+          </div>
+        </article>
+        <article class="course-media-card">
+          <div class="course-card-label"><span>Hole map</span><small>Not to scale after four pints</small></div>
+          <div class="course-map-frame">
+            <img src="${selectedHole.image}" alt="Official map of Aberdovey hole ${selectedHole.number}" />
+          </div>
+        </article>
+      </div>
+      <div class="course-briefing-grid">
+        <article class="course-brief-card official">
+          <p class="course-brief-number">01</p>
+          <div>
+            <p class="course-brief-label">The Official Line</p>
+            <h3>How sensible people play it</h3>
+            <p>${escapeHtml(selectedHole.official)}</p>
+          </div>
+        </article>
+        <article class="course-brief-card maj">
+          <p class="course-brief-number">02</p>
+          <div>
+            <p class="course-brief-label">Sergeant Maj’s Strategic Summary</p>
+            <h3>Orders from tour command</h3>
+            <p>${escapeHtml(selectedHole.maj)}</p>
+          </div>
+        </article>
+      </div>
+      <div class="course-hole-footer">
+        ${previousHole ? `
+          <button data-action="course-guide-hole" data-hole="${previousHole}" type="button"><span>←</span> Hole ${previousHole}</button>
+        ` : `
+          <button data-action="overview-back" type="button"><span>←</span> Cover</button>
+        `}
+        <p>${selectedHole.number} / ${aberdoveyCourseHoles.length}</p>
+        ${nextHole ? `
+          <button data-action="course-guide-hole" data-hole="${nextHole}" type="button">Hole ${nextHole} <span>→</span></button>
+        ` : `
+          <button data-action="open-course-scorecard" type="button">Scorecard <span>→</span></button>
+        `}
+      </div>
+      <footer class="course-guide-credit">
+        <p>Course facts, maps and flyovers credited to Aberdovey Golf Club.</p>
+        <p>Unofficial commentary by Sergeant Maj. Errors likely; confidence total.</p>
+      </footer>
+      ${CourseGuideScorecardOverlay()}
+    </div>
+  `;
+}
+
 function ThisTourOverviewFeature() {
   const pageKey = state.thisTourOverviewPanel;
   const year = currentTourPageYear();
@@ -2641,6 +3093,15 @@ function ThisTourOverviewFeature() {
         <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
         <h1>${escapeHtml(title)}</h1>
         <div class="overview-feature-body">${AberdoveyScorecard()}</div>
+      </section>
+    `;
+  }
+
+  if (pageKey === "course-guide") {
+    return `
+      <section class="overview-feature-screen course-guide-screen">
+        ${CourseGuideHeader()}
+        <div class="overview-feature-body">${CourseGuide()}</div>
       </section>
     `;
   }
@@ -2784,13 +3245,40 @@ function formatProfileBody(value = "") {
     /\s+(?=(Evening H cap|Offers|Outside his skill set|Sportsman most like|Guilty pleasure|Best Nudgers Moment|Worst Nudgers Moment)\s*:)/gi,
     "\n\n"
   );
+  const profileBlocksForParagraph = (paragraph) => {
+    if (!paragraph.startsWith("#")) {
+      return splitLongParagraph(paragraph).map((text) => ({ type: "paragraph", text }));
+    }
+
+    const colonMatch = paragraph.match(/^#\s*([^:#]+?)\s*:\s*#?\s*(.*)$/);
+    if (colonMatch) {
+      const label = colonMatch[1].trim();
+      const bodyText = colonMatch[2].trim();
+      return [{
+        type: "labelParagraph",
+        label: label ? `${label}:` : "",
+        text: bodyText,
+      }];
+    }
+
+    const headingText = colonMatch
+      ? colonMatch[1].trim()
+      : paragraph.replace(/^#\s*/, "").trim();
+    return headingText ? [{ type: "heading", text: headingText }] : [];
+  };
 
   return withSections
     .split(/\n{2,}|\n/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
-    .flatMap((paragraph) => splitLongParagraph(paragraph))
-    .map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`)
+    .flatMap(profileBlocksForParagraph)
+    .map((block) => (
+      block.type === "heading"
+        ? `<h4 class="profile-body-heading">${escapeHtml(block.text)}</h4>`
+        : block.type === "labelParagraph"
+          ? `<p class="profile-body-label-line"><strong>${escapeHtml(block.label)}</strong>${block.text ? ` ${escapeHtml(block.text)}` : ""}</p>`
+          : `<p>${escapeHtml(block.text)}</p>`
+    ))
     .join("");
 }
 
@@ -2889,19 +3377,34 @@ function TourProfileCard(row) {
   `;
 }
 
-function TourProfileRail(profileRows) {
+function TourProfilePickerButton() {
   return `
-    <div class="tour-profile-rail" aria-label="Tour profile quick jump">
-      ${profileRows.map((row) => {
-        const player = getPlayerById(row.player_id);
-        const playerName = player?.player_name || `Player ${row.player_id}`;
-        return `
-          <button class="tour-rail-face" data-action="jump-tour-profile" data-profile-id="${row.id}" aria-label="${escapeHtml(playerName)}" aria-current="false">
-            ${Avatar(player, "tour-rail-avatar")}
-          </button>
-        `;
-      }).join("")}
-    </div>
+    <button class="tour-profile-picker-trigger" data-action="open-tour-profile-picker" type="button" aria-label="Choose a Tourist">
+      ${icon("people")}
+    </button>
+  `;
+}
+
+function TourProfilePickerOverlay(profileRows) {
+  return `
+    <section class="tour-profile-picker-overlay" role="dialog" aria-modal="true" aria-label="Choose a Tourist">
+      <div class="tour-profile-picker-head">
+        <h3>Choose a Tourist</h3>
+        <button data-action="close-tour-profile-picker" type="button" aria-label="Close tourist picker">×</button>
+      </div>
+      <div class="tour-profile-picker-grid">
+        ${profileRows.map((row) => {
+          const player = getPlayerById(row.player_id);
+          const playerName = player?.player_name || `Player ${row.player_id}`;
+          return `
+            <button class="tour-picker-face" data-action="jump-tour-profile" data-profile-id="${row.id}" type="button" aria-label="${escapeHtml(playerName)}" aria-current="false">
+              ${Avatar(player, "tour-picker-avatar")}
+              <span>${escapeHtml(firstNameFromName(playerName))}</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </section>
   `;
 }
 
@@ -2945,11 +3448,12 @@ function TourProfiles(tour) {
 
   return `
     <div class="tour-profile-reader">
-      <div class="tour-profile-list with-rail">
+      ${TourProfilePickerButton()}
+      <div class="tour-profile-list">
         ${TourProfileStats(profileRows)}
         ${profileRows.map(TourProfileCard).join("")}
       </div>
-      ${TourProfileRail(profileRows)}
+      ${state.tourProfilePickerOpen ? TourProfilePickerOverlay(profileRows) : ""}
     </div>
   `;
 }
@@ -3250,6 +3754,43 @@ function summariseIndividual(matches) {
   );
 }
 
+function mostPlayedOpponent(playerName, matches = []) {
+  const counts = {};
+
+  matches.forEach((match) => {
+    const selectedTeam = match.selectedTeam || playerTeamInMatch(match, playerName);
+    const opponentTeam = selectedTeam === "Crocs" ? "Foz" : "Crocs";
+    teamNameListForMatch(match, opponentTeam).forEach((opponentName) => {
+      if (!opponentName || opponentName === playerName) return;
+      counts[opponentName] = (counts[opponentName] || 0) + 1;
+    });
+  });
+
+  const leaders = leadersBy(
+    Object.entries(counts).map(([name, matchesPlayed]) => ({ name, matches: matchesPlayed })),
+    (row) => row.matches,
+    (a, b) => a.name.localeCompare(b.name)
+  );
+
+  return leaders.length
+    ? {
+        name: leaders.map((row) => row.name).join(", "),
+        matches: leaders[0].matches,
+      }
+    : { name: "N/A", matches: 0 };
+}
+
+function IndividualSummaryRow({ label, value, detailKey }) {
+  return `
+    <div class="data-row">
+      <span>${label}</span>
+      <button class="data-row-value" data-action="show-individual-detail" data-detail="${escapeHtml(detailKey)}" type="button" aria-haspopup="dialog">
+        ${value}
+      </button>
+    </div>
+  `;
+}
+
 function courseNameForMatch(match) {
   return (
     match.course_name ||
@@ -3315,6 +3856,127 @@ function IndividualMatchRow(match) {
   `;
 }
 
+function IndividualPointBreakdownRows(matches = []) {
+  if (!matches.length) return Card(`<p class="empty-state">No matches found.</p>`);
+
+  return `
+    <div class="stats-breakdown-list">
+      ${matches.map((match) => {
+        const outcome = individualOutcome(match);
+        const tour = match.tour_name || tourDisplayName(tours.find((item) => Number(item.year) === Number(match.year))) || "Tour";
+        return `
+          <div class="stats-breakdown-row">
+            <span>${escapeHtml(tour)} ${escapeHtml(String(match.year || ""))}</span>
+            <strong>${escapeHtml(formatTeamPoints(outcome.points))}</strong>
+            <small>Day ${escapeHtml(String(match.day || ""))} · Match ${escapeHtml(String(match.match_number || ""))} · ${escapeHtml(outcome.label)}</small>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function IndividualTourBreakdownRows(matches = []) {
+  const byYear = matches.reduce((grouped, match) => {
+    if (!match.year) return grouped;
+    if (!grouped[match.year]) grouped[match.year] = [];
+    grouped[match.year].push(match);
+    return grouped;
+  }, {});
+  const rows = Object.entries(byYear).sort(([yearA], [yearB]) => Number(yearB) - Number(yearA));
+  if (!rows.length) return Card(`<p class="empty-state">No tours found.</p>`);
+
+  return `
+    <div class="stats-breakdown-list">
+      ${rows.map(([year, yearMatches]) => {
+        const tour = tours.find((item) => Number(item.year) === Number(year));
+        const tourName = tourDisplayName(tour) || yearMatches[0]?.tour_name || `Tour ${year}`;
+        return `
+          <div class="stats-breakdown-row">
+            <span>${escapeHtml(tourName)} ${escapeHtml(String(year))}</span>
+            <strong>${yearMatches.length}</strong>
+            <small>${yearMatches.length === 1 ? "match played" : "matches played"}</small>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function IndividualWinRateBreakdown(summary) {
+  return `
+    <div class="stats-breakdown-list">
+      <div class="stats-breakdown-row"><span>Wins</span><strong>${summary.wins}</strong><small>Full-point wins</small></div>
+      <div class="stats-breakdown-row"><span>Halves</span><strong>${summary.halves}</strong><small>Half-point matches</small></div>
+      <div class="stats-breakdown-row"><span>Losses</span><strong>${summary.losses}</strong><small>Matches lost</small></div>
+      <div class="stats-breakdown-row"><span>Matches played</span><strong>${summary.matches}</strong><small>Win rate is wins divided by matches</small></div>
+    </div>
+  `;
+}
+
+function IndividualDetailOverlay({ playerName, matches, summary, totalTours, tourWins, winRate, mostPlayed }) {
+  const key = state.individualDetailKey;
+  const detailMatches = key === "most-played" && mostPlayed.matches
+    ? matches.filter((match) => {
+        const selectedTeam = match.selectedTeam || playerTeamInMatch(match, playerName);
+        const opponentTeam = selectedTeam === "Crocs" ? "Foz" : "Crocs";
+        const opponents = teamNameListForMatch(match, opponentTeam);
+        return mostPlayed.name.split(/\s*,\s*/).some((name) => opponents.includes(name));
+      })
+    : matches;
+  const configs = {
+    "total-tours": {
+      kicker: "Total Tours",
+      title: escapeHtml(String(totalTours)),
+      body: IndividualTourBreakdownRows(matches),
+    },
+    "tour-wins": {
+      kicker: "Tour Wins",
+      title: `${formatTeamPoints(tourWins)} ${icon("star")}`,
+      body: StarBreakdownRows(playerName, state.touristResultsRows),
+    },
+    "matches-played": {
+      kicker: "Matches Played",
+      title: escapeHtml(String(summary.matches)),
+      body: detailMatches.length
+        ? `<div class="meeting-list">${detailMatches.map((match) => OverviewPlayerMatchCard(match, playerName)).join("")}</div>`
+        : Card(`<p class="empty-state">No matches found.</p>`),
+    },
+    "total-points": {
+      kicker: "Total Points",
+      title: escapeHtml(formatTeamPoints(summary.points)),
+      body: IndividualPointBreakdownRows(matches),
+    },
+    "win-rate": {
+      kicker: "Win Rate",
+      title: escapeHtml(`${winRate}%`),
+      body: IndividualWinRateBreakdown(summary),
+    },
+    "most-played": {
+      kicker: "Most Played",
+      title: escapeHtml(mostPlayed.matches ? `${mostPlayed.name} (${mostPlayed.matches})` : "N/A"),
+      body: detailMatches.length
+        ? `<div class="meeting-list">${detailMatches.map((match) => OverviewPlayerMatchCard(match, playerName)).join("")}</div>`
+        : Card(`<p class="empty-state">No matches found.</p>`),
+    },
+  };
+  const config = configs[key];
+  if (!config) return "";
+
+  return `
+    <section class="rivals-overlay stats-detail-overlay individual-detail-overlay" role="dialog" aria-label="${escapeHtml(config.kicker)} details">
+      <div class="overview-feature-topbar rivals-overlay-topbar">
+        <button class="overview-feature-back" data-action="close-individual-detail" aria-label="Close detail">${icon("back")}</button>
+        <div>
+          <span>${escapeHtml(config.kicker)}</span>
+          <h2>${config.title}</h2>
+        </div>
+      </div>
+      ${config.body}
+    </section>
+  `;
+}
+
 function IndividualTourHistory(tourKey, matches) {
   const tour = tours.find((item) => Number(item.year) === Number(tourKey));
   const groupedDays = matches.reduce((grouped, match) => {
@@ -3341,8 +4003,13 @@ function IndividualTourHistory(tourKey, matches) {
 
 function IndividualStats() {
   const player = getPlayerById(state.selectedIndividualPlayerId);
+  const playerName = player?.player_name || "";
   const matches = state.individualMatchesByPlayerId[state.selectedIndividualPlayerId] || [];
   const summary = summariseIndividual(matches);
+  const totalTours = new Set(matches.map((match) => match.year).filter(Boolean)).size;
+  const profileRows = state.touristProfileRows.filter((row) => Number(row.player_id) === Number(state.selectedIndividualPlayerId));
+  const tourWins = playerName ? playerTourWins(playerName, profileRows) : 0;
+  const mostPlayed = mostPlayedOpponent(playerName, matches);
   const groupedTours = matches.reduce((grouped, match) => {
     if (!grouped[match.year]) grouped[match.year] = [];
     grouped[match.year].push(match);
@@ -3362,10 +4029,14 @@ function IndividualStats() {
         <span><b>${summary.halves}</b>Halves</span>
         <span><b>${summary.losses}</b>Losses</span>
       </div>
-      <div class="data-row"><span>Matches played</span><strong>${summary.matches}</strong></div>
-      <div class="data-row"><span>Total points</span><strong>${formatTeamPoints(summary.points)}</strong></div>
-      <div class="data-row"><span>Win rate</span><strong>${winRate}%</strong></div>
+      ${IndividualSummaryRow({ label: "Total tours", value: String(totalTours), detailKey: "total-tours" })}
+      ${IndividualSummaryRow({ label: `Tour wins ${icon("star")}`, value: escapeHtml(formatTeamPoints(tourWins)), detailKey: "tour-wins" })}
+      ${IndividualSummaryRow({ label: "Matches played", value: String(summary.matches), detailKey: "matches-played" })}
+      ${IndividualSummaryRow({ label: "Total points", value: escapeHtml(formatTeamPoints(summary.points)), detailKey: "total-points" })}
+      ${IndividualSummaryRow({ label: "Win rate", value: `${winRate}%`, detailKey: "win-rate" })}
+      ${IndividualSummaryRow({ label: "Most played", value: escapeHtml(mostPlayed.matches ? `${mostPlayed.name} (${mostPlayed.matches})` : mostPlayed.name), detailKey: "most-played" })}
     `)}
+    ${state.individualDetailKey ? IndividualDetailOverlay({ playerName, matches, summary, totalTours, tourWins, winRate, mostPlayed }) : ""}
     <h3 class="section-title">Match History</h3>
     ${state.individualLoadingPlayerId === state.selectedIndividualPlayerId ? Card(`<p class="empty-state">Loading matches...</p>`) : ""}
     ${state.individualError ? Card(`<p class="empty-state">${escapeHtml(state.individualError)}</p>`) : ""}
@@ -4661,6 +5332,16 @@ function restoreScrollPosition() {
   });
 }
 
+function restoreCourseGuideStripScroll() {
+  if (state.thisTourOverviewPanel !== "course-guide") return;
+  const scrollLeft = Number(state.courseGuideStripScrollLeft) || 0;
+  if (!scrollLeft) return;
+  requestAnimationFrame(() => {
+    const strip = document.querySelector(".course-hole-strip");
+    if (strip) strip.scrollLeft = scrollLeft;
+  });
+}
+
 function render() {
   if (window.matchMedia("(min-width: 769px)").matches) {
     app.innerHTML = DesktopGate();
@@ -4692,6 +5373,7 @@ function render() {
   updateCountdown();
   syncBirthdayOverlay();
   restoreScrollPosition();
+  restoreCourseGuideStripScroll();
   requestAnimationFrame(updateActiveTourProfileRail);
   if (state.tourPageEditingKey) {
     requestAnimationFrame(() => {
@@ -4726,6 +5408,7 @@ app.addEventListener("click", (event) => {
     return;
   }
   const action = target.dataset.action;
+  if (action === "course-guide-tee") return;
   if (action === "tab") {
     if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
     randomNudgerSpinTimer = null;
@@ -4748,6 +5431,7 @@ app.addEventListener("click", (event) => {
     state.touristToursOverlayOpen = false;
     state.openHeadToHeadPicker = null;
     state.openIndividualPicker = false;
+    state.individualDetailKey = "";
     state.rivalsOverlayOpen = false;
     state.statsOverlayKey = "";
     state.homeMenuOpen = false;
@@ -4770,6 +5454,7 @@ app.addEventListener("click", (event) => {
     state.touristProfileOpen = false;
     state.touristProfileReturn = null;
     state.touristToursOverlayOpen = false;
+    state.individualDetailKey = "";
     state.rivalsOverlayOpen = false;
     state.statsOverlayKey = "";
     state.homeMenuOpen = false;
@@ -4835,6 +5520,7 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.detailSubTab = target.dataset.tab;
     state.thisTourOverviewPanel = "";
+    state.tourProfilePickerOpen = false;
     state.matchReportOpenYear = null;
     const tour = state.tab === "this-tour" ? tours[0] : tours.find((item) => item.id === state.detailTour);
     if (state.detailSubTab === "Overview" && state.tab !== "this-tour" && tour?.status === "Completed") loadTourResults(tour?.year);
@@ -4860,20 +5546,47 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
     state.thisTourOverviewPanel = target.dataset.view;
+    state.selectedCourseGuideHole = state.thisTourOverviewPanel === "course-guide" ? 1 : null;
+    state.courseGuideStripScrollLeft = 0;
+    state.courseGuideScorecardOpen = false;
     if (state.thisTourOverviewPanel === "random-nudger-generator") {
       if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
       randomNudgerSpinTimer = null;
       state.randomNudgerDraw = emptyRandomNudgerDraw(state.randomNudgerDraw?.mode || "pairs");
       loadTourProfiles(tours[0]?.supabaseId);
-    } else if (state.thisTourOverviewPanel !== "scorecards") {
+    } else if (!["scorecards", "course-guide"].includes(state.thisTourOverviewPanel)) {
       loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
     }
   }
   if (action === "overview-back") {
     state.restoredScrollTop = 0;
     state.thisTourOverviewPanel = "";
+    state.selectedCourseGuideHole = null;
+    state.courseGuideStripScrollLeft = 0;
+    state.courseGuideScorecardOpen = false;
     if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
     randomNudgerSpinTimer = null;
+  }
+  if (action === "course-guide-hole") {
+    const content = document.querySelector(".content");
+    const strip = document.querySelector(".course-hole-strip");
+    state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
+    state.courseGuideStripScrollLeft = strip ? Math.round(strip.scrollLeft) : 0;
+    state.selectedCourseGuideHole = Number(target.dataset.hole) || null;
+  }
+  if (action === "course-guide-grid") {
+    state.restoredScrollTop = 0;
+    state.selectedCourseGuideHole = null;
+  }
+  if (action === "open-course-scorecard") {
+    const content = document.querySelector(".content");
+    const strip = document.querySelector(".course-hole-strip");
+    state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
+    state.courseGuideStripScrollLeft = strip ? Math.round(strip.scrollLeft) : 0;
+    state.courseGuideScorecardOpen = true;
+  }
+  if (action === "close-course-scorecard") {
+    state.courseGuideScorecardOpen = false;
   }
   if (action === "edit-tour-page") {
     const year = currentTourPageYear();
@@ -4972,6 +5685,7 @@ app.addEventListener("click", (event) => {
   if (action === "stat-tab") {
     state.restoredScrollTop = 0;
     state.statSubTab = target.dataset.tab;
+    state.individualDetailKey = "";
     state.rivalsOverlayOpen = false;
     state.statsOverlayKey = "";
     if (state.statSubTab === "Overview") loadStatsOverview();
@@ -4993,6 +5707,12 @@ app.addEventListener("click", (event) => {
   }
   if (action === "close-stats-detail") {
     state.statsOverlayKey = "";
+  }
+  if (action === "show-individual-detail") {
+    state.individualDetailKey = target.dataset.detail || "";
+  }
+  if (action === "close-individual-detail") {
+    state.individualDetailKey = "";
   }
   if (action === "show-rivals-detail") {
     const stats = buildOverviewStats(state.statsOverviewRows || [], state.statsActiveOnly);
@@ -5080,6 +5800,7 @@ app.addEventListener("click", (event) => {
   if (action === "choose-individual-player") {
     state.selectedIndividualPlayerId = Number(target.dataset.playerId);
     state.openIndividualPicker = false;
+    state.individualDetailKey = "";
     loadIndividualMatches();
   }
   if (action === "swap-h2h") {
@@ -5095,13 +5816,39 @@ app.addEventListener("click", (event) => {
     const profileId = target.dataset.profileId;
     state.expandedTourProfiles[profileId] = !state.expandedTourProfiles[profileId];
   }
+  if (action === "open-tour-profile-picker") {
+    const content = document.querySelector(".content");
+    state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
+    state.tourProfilePickerOpen = true;
+  }
+  if (action === "close-tour-profile-picker") {
+    const content = document.querySelector(".content");
+    state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
+    state.tourProfilePickerOpen = false;
+  }
   if (action === "jump-tour-profile") {
+    state.tourProfilePickerOpen = false;
+    document.querySelector(".tour-profile-picker-overlay")?.remove();
     jumpToTourProfile(target.dataset.profileId);
     persistRoute();
     return;
   }
   render();
   persistRoute();
+});
+
+app.addEventListener("change", (event) => {
+  const target = event.target.closest("[data-action]");
+  if (!target) return;
+
+  if (target.dataset.action === "course-guide-tee") {
+    const strip = document.querySelector(".course-hole-strip");
+    state.selectedCourseGuideTee = target.value;
+    state.restoredScrollTop = document.querySelector(".content")?.scrollTop || 0;
+    state.courseGuideStripScrollLeft = strip ? Math.round(strip.scrollLeft) : 0;
+    render();
+    persistRoute();
+  }
 });
 
 app.addEventListener("input", (event) => {
@@ -5158,8 +5905,8 @@ function tourProfileTopOffset() {
 }
 
 function updateActiveTourProfileRail(forcedProfileId = null) {
-  const rail = document.querySelector(".tour-profile-rail");
-  if (!rail) return;
+  const picker = document.querySelector(".tour-profile-picker-overlay");
+  if (!picker) return;
 
   const cards = Array.from(document.querySelectorAll(".tour-profile-card"));
   if (!cards.length) return;
@@ -5179,11 +5926,11 @@ function updateActiveTourProfileRail(forcedProfileId = null) {
   if (!activeId) return;
 
   let activeButton = null;
-  rail.querySelectorAll(".tour-rail-face").forEach((button) => {
+  picker.querySelectorAll(".tour-picker-face").forEach((button) => {
     if (button.dataset.profileId === activeId) activeButton = button;
   });
 
-  rail.querySelectorAll(".tour-rail-face").forEach((button) => {
+  picker.querySelectorAll(".tour-picker-face").forEach((button) => {
     const isActive = button === activeButton;
     button.classList.toggle("active", isActive);
     button.setAttribute("aria-current", isActive ? "true" : "false");
@@ -5193,7 +5940,7 @@ function updateActiveTourProfileRail(forcedProfileId = null) {
 }
 
 document.addEventListener("scroll", (event) => {
-  if (event.target?.closest?.(".tour-profile-rail")) return;
+  if (event.target?.closest?.(".tour-profile-picker-grid")) return;
   persistRoute();
   updateActiveTourProfileRail();
 }, true);
@@ -5220,17 +5967,17 @@ function activateWaitingServiceWorker(worker) {
 }
 
 function checkForAppUpdate({ autoApply = false } = {}) {
-  if (!serviceWorkerRegistration) return;
-  const now = Date.now();
-  if (now - lastAutoUpdateCheckAt < 30000) return;
-  lastAutoUpdateCheckAt = now;
+  if (!serviceWorkerRegistration || appUpdateCheckInFlight) return;
+  appUpdateCheckInFlight = true;
 
   serviceWorkerRegistration.update().then(() => {
     const waitingWorker = serviceWorkerRegistration.waiting;
     if (!waitingWorker || !navigator.serviceWorker.controller) return;
     if (autoApply) activateWaitingServiceWorker(waitingWorker);
     else showUpdateAvailable(waitingWorker);
-  }).catch(() => {});
+  }).catch(() => {}).finally(() => {
+    appUpdateCheckInFlight = false;
+  });
 }
 
 if ("serviceWorker" in navigator) {
