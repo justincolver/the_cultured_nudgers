@@ -3386,7 +3386,6 @@ function CourseGuide() {
       </div>
       <div class="course-briefing-grid">
         <article class="course-brief-card official">
-          <p class="course-brief-number">01</p>
           <div>
             <p class="course-brief-label">The Official Line</p>
             <h3>How sensible people play it</h3>
@@ -3394,7 +3393,6 @@ function CourseGuide() {
           </div>
         </article>
         <article class="course-brief-card maj">
-          <p class="course-brief-number">02</p>
           <div>
             <p class="course-brief-label">Sergeant Maj’s Strategic Summary</p>
             <h3>Orders from tour command</h3>

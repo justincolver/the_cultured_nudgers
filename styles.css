@@ -2529,21 +2529,13 @@ svg {
 
 .course-brief-card {
   display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 10px;
   padding: 16px;
 }
 
 .course-brief-card.maj {
   background: linear-gradient(145deg, rgba(6, 35, 26, .96), rgba(13, 72, 51, .96));
-}
-
-.course-brief-number {
-  margin: 0;
-  color: rgba(208, 173, 103, .48);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 34px;
-  line-height: 1;
 }
 
 .course-brief-label {
