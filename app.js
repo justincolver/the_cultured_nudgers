@@ -612,6 +612,55 @@ async function saveTourPage(year, pageKey) {
   }
 }
 
+function itineraryYearRange(year) {
+  const safeYear = Number(year) || new Date().getFullYear();
+  return {
+    start: `${safeYear}-01-01`,
+    end: `${safeYear}-12-31`,
+  };
+}
+
+async function loadItinerary(year, { force = false } = {}) {
+  if (!year || (state.itineraryRowsByYear[year] && !force) || state.itineraryLoadingYear === year) return;
+
+  const { start, end } = itineraryYearRange(year);
+  state.itineraryLoadingYear = year;
+  state.itineraryError = "";
+  render();
+
+  try {
+    state.itineraryRowsByYear[year] = await supabaseFetch(
+      `itinerary?select=*&date=gte.${start}&date=lte.${end}&order=date.asc&order=time_from.asc&order=id.asc`
+    );
+  } catch (error) {
+    console.warn(error);
+    state.itineraryError = "Could not load itinerary.";
+  } finally {
+    state.itineraryLoadingYear = null;
+    render();
+  }
+}
+
+async function saveItineraryRow({ method = "POST", rowId = null, body = null, year = currentTourPageYear() } = {}) {
+  if (state.itinerarySaving) return;
+  state.itinerarySaving = true;
+  state.itineraryError = "";
+  render();
+
+  try {
+    const path = rowId ? `itinerary?id=eq.${encodeURIComponent(rowId)}` : "itinerary";
+    await supabaseWrite(path, { method, body });
+    await loadItinerary(year, { force: true });
+    state.itineraryEditor = null;
+  } catch (error) {
+    console.warn(error);
+    state.itineraryError = "Could not save itinerary item.";
+  } finally {
+    state.itinerarySaving = false;
+    render();
+  }
+}
+
 async function loadIndividualMatches() {
   const playerId = state.selectedIndividualPlayerId;
   if (!playerId) return;
@@ -1007,7 +1056,11 @@ async function loadSupabaseData() {
       !["scorecards", "random-nudger-generator"].includes(state.thisTourOverviewPanel) &&
       !isCourseGuidePanel(state.thisTourOverviewPanel)
     ) {
-      loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
+      if (state.thisTourOverviewPanel === "itinerary") {
+        loadItinerary(currentTourPageYear());
+      } else {
+        loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
+      }
     }
   } catch (error) {
     console.warn(error);
@@ -1098,6 +1151,12 @@ let state = {
   tourPageError: "",
   tourPageEditingKey: null,
   tourPageDrafts: {},
+  itineraryRowsByYear: {},
+  itineraryLoadingYear: null,
+  itineraryError: "",
+  itinerarySaving: false,
+  itineraryDayIndex: 0,
+  itineraryEditor: null,
   hallOfFameRows: [],
   hallOfFameLoading: false,
   hallOfFameLoaded: false,
@@ -1138,6 +1197,10 @@ function icon(name) {
     calendar: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
     scorecard: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M9.5 7h5M9.5 11h5M9.5 15h3"/><path d="M10 3.5V2h4v1.5"/>',
     chart: '<path d="M5 19V9M12 19V5M19 19v-8"/>',
+    clock: '<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>',
+    bed: '<path d="M4 19V7"/><path d="M20 19v-5a3 3 0 0 0-3-3H4"/><path d="M4 11h5v3H4"/><path d="M4 16h16"/>',
+    car: '<path d="M5 16h14"/><path d="m6.5 12 1.3-4h8.4l1.3 4"/><rect x="4" y="12" width="16" height="5" rx="2"/><circle cx="7.5" cy="17" r="1.4"/><circle cx="16.5" cy="17" r="1.4"/>',
+    food: '<path d="M6 3v8"/><path d="M10 3v8"/><path d="M6 7h4"/><path d="M8 11v10"/><path d="M17 3v18"/><path d="M14 3c0 5 1 8 3 8"/>',
     pin: '<path d="M12 21s7-5.3 7-11a7 7 0 0 0-14 0c0 5.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 14.5-4 16 0"/>',
     people: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.5 11.8-3.5 13 0"/><circle cx="17" cy="9" r="2.8"/><path d="M14.5 19c1.1-2.1 5.3-2.1 6.4 0"/>',
@@ -3162,6 +3225,248 @@ function TourPageReadBox(blocks) {
   `;
 }
 
+const itineraryWeekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const itineraryMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function ordinalDay(day) {
+  const value = Number(day);
+  const suffix = value % 10 === 1 && value % 100 !== 11 ? "st" :
+    value % 10 === 2 && value % 100 !== 12 ? "nd" :
+    value % 10 === 3 && value % 100 !== 13 ? "rd" :
+    "th";
+  return `${value}${suffix}`;
+}
+
+function dateParts(date = "") {
+  const [year, month, day] = String(date).split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return { year, month, day, date: new Date(year, month - 1, day, 12) };
+}
+
+function itineraryDayHeading(date = "") {
+  const parts = dateParts(date);
+  if (!parts) return "Itinerary";
+  return `${itineraryWeekdays[parts.date.getDay()]} ${ordinalDay(parts.day)} ${itineraryMonths[parts.month - 1]}`;
+}
+
+function itineraryTabLabel(date = "") {
+  const parts = dateParts(date);
+  return parts ? itineraryWeekdays[parts.date.getDay()].toUpperCase() : "DAY";
+}
+
+function formatItineraryTime(time = "") {
+  const match = String(time || "").match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return "";
+  const hour = Number(match[1]);
+  const minute = match[2];
+  const period = hour >= 12 ? "pm" : "am";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minute}${period}`;
+}
+
+function timeInputValue(time = "") {
+  const match = String(time || "").match(/^(\d{1,2}):(\d{2})/);
+  return match ? `${String(match[1]).padStart(2, "0")}:${match[2]}` : "";
+}
+
+function timeForSupabase(value = "") {
+  const clean = String(value || "").trim().toLowerCase();
+  if (!clean) return null;
+  const htmlMatch = clean.match(/^(\d{1,2}):(\d{2})$/);
+  if (htmlMatch) return `${htmlMatch[1].padStart(2, "0")}:${htmlMatch[2]}:00`;
+  const textMatch = clean.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
+  if (!textMatch) return clean;
+  let hour = Number(textMatch[1]);
+  const minute = textMatch[2] || "00";
+  if (textMatch[3] === "pm" && hour < 12) hour += 12;
+  if (textMatch[3] === "am" && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, "0")}:${minute}:00`;
+}
+
+function itineraryIconName(row = {}) {
+  const detail = `${row.header || ""} ${row.text || ""}`;
+  const iconName =
+    /tee|golf|round|fourball|scramble|trophy/i.test(detail) ? "flag" :
+    /drive|depart|car|travel|check out/i.test(detail) ? "car" :
+    /hotel|castle|dormy|check-in|accommodation|carriages/i.test(detail) ? "bed" :
+    /lunch|dinner|bay of bengal|breakfast|ceremony|beer|session|inn|pub|spa/i.test(detail) ? "food" :
+    "calendar";
+  return iconName;
+}
+
+function groupItineraryRows(rows = []) {
+  const groups = [];
+  rows
+    .filter((row) => row?.date)
+    .sort((a, b) => `${a.date} ${a.time_from || ""} ${a.id || ""}`.localeCompare(`${b.date} ${b.time_from || ""} ${b.id || ""}`))
+    .forEach((row) => {
+      let group = groups.find((item) => item.date === row.date);
+      if (!group) {
+        group = { date: row.date, heading: itineraryDayHeading(row.date), items: [] };
+        groups.push(group);
+      }
+      group.items.push({
+        ...row,
+        time: formatItineraryTime(row.time_from),
+        toTime: formatItineraryTime(row.time_to),
+        title: row.header || "",
+        subtitle: row.text || "",
+        iconName: itineraryIconName(row),
+      });
+    });
+  return groups;
+}
+
+function itineraryEditorFields(item = {}) {
+  return {
+    from: timeInputValue(item.time_from),
+    to: timeInputValue(item.time_to),
+    header: item.title || "",
+    text: item.subtitle || "",
+  };
+}
+
+function readItineraryEditorForm() {
+  const form = document.querySelector(".itinerary-editor-form");
+  if (!form) return null;
+  const formData = new FormData(form);
+  return {
+    from: String(formData.get("from") || ""),
+    to: String(formData.get("to") || ""),
+    header: String(formData.get("header") || ""),
+    text: String(formData.get("text") || ""),
+  };
+}
+
+function openItineraryEditor(mode, dayIndex, itemIndex = null, item = null) {
+  state.itineraryEditor = {
+    mode,
+    dayIndex: Number(dayIndex) || 0,
+    itemIndex: itemIndex === null ? null : Number(itemIndex) || 0,
+    rowId: item?.id || null,
+    date: item?.date || null,
+    fields: itineraryEditorFields(item || {}),
+  };
+}
+
+function closeItineraryEditor() {
+  state.itineraryEditor = null;
+}
+
+function saveItineraryEditor(deleteItem = false) {
+  const editor = state.itineraryEditor;
+  const year = currentTourPageYear();
+  if (!editor) return;
+
+  if (deleteItem && editor.rowId) {
+    saveItineraryRow({ method: "DELETE", rowId: editor.rowId, year });
+    return;
+  }
+
+  const fields = readItineraryEditorForm();
+  if (!fields?.from?.trim() || !fields?.header?.trim()) return;
+
+  const rows = state.itineraryRowsByYear[year] || [];
+  const days = groupItineraryRows(rows);
+  const day = days[editor.dayIndex || 0];
+  const body = {
+    date: editor.date || day?.date,
+    time_from: timeForSupabase(fields.from),
+    time_to: timeForSupabase(fields.to),
+    header: String(fields.header || "").trim(),
+    text: String(fields.text || "").trim(),
+  };
+  if (!body.date || !body.time_from || !body.header) return;
+
+  saveItineraryRow({
+    method: editor.mode === "edit" && editor.rowId ? "PATCH" : "POST",
+    rowId: editor.rowId,
+    body,
+    year,
+  });
+}
+
+function ItineraryReadBox(rows) {
+  const days = groupItineraryRows(rows);
+  if (!days.length) return `<p class="empty-state">No itinerary yet.</p>`;
+
+  const activeIndex = Math.min(Math.max(Number(state.itineraryDayIndex) || 0, 0), days.length - 1);
+  const activeDay = days[activeIndex];
+  const editor = state.itineraryEditor;
+  const editorFields = editor?.fields || {};
+
+  return `
+    <div class="itinerary-planner">
+      <nav class="itinerary-tabs" aria-label="Itinerary days">
+        ${days.map((day, index) => `
+          <button
+            class="${index === activeIndex ? "active" : ""}"
+            data-action="itinerary-tab"
+            data-index="${index}"
+            type="button"
+            ${index === activeIndex ? `aria-current="page"` : ""}
+          >${escapeHtml(itineraryTabLabel(day.date))}</button>
+        `).join("")}
+      </nav>
+      <section class="itinerary-day-panel">
+        <div class="itinerary-day-heading">
+          <h2>${escapeHtml(activeDay.heading)}</h2>
+          <button data-action="add-itinerary-item" data-day-index="${activeIndex}" type="button">Add</button>
+        </div>
+        <div class="itinerary-timeline">
+          ${activeDay.items.map((item, itemIndex) => `
+            <article class="itinerary-event">
+              <time>${escapeHtml(item.time || "—")}</time>
+              <span class="itinerary-dot" aria-hidden="true"></span>
+              <div class="itinerary-event-card">
+                <span class="itinerary-event-icon">${icon(item.iconName)}</span>
+                <div>
+                  <h3>${escapeHtml(item.title)}</h3>
+                  ${item.subtitle ? `<p>${escapeHtml(item.subtitle)}</p>` : ""}
+                </div>
+                <button class="itinerary-event-chevron" data-action="edit-itinerary-item" data-day-index="${activeIndex}" data-item-index="${itemIndex}" type="button" aria-label="Edit ${escapeHtml(item.title)}">${icon("chevron")}</button>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    </div>
+    ${editor ? `
+      <section class="itinerary-editor-overlay" role="dialog" aria-modal="true" aria-label="${editor.mode === "edit" ? "Edit itinerary item" : "Add itinerary item"}">
+        <div class="itinerary-editor-modal">
+          <div class="itinerary-editor-head">
+            <h3>${editor.mode === "edit" ? "Edit Item" : "Add Item"}</h3>
+            <button data-action="close-itinerary-editor" type="button" aria-label="Close itinerary editor">×</button>
+          </div>
+          <form class="itinerary-editor-form">
+            <label>
+              <span>Time (from)</span>
+              <input name="from" type="time" value="${escapeHtml(editorFields.from || "")}" required />
+            </label>
+            <label>
+              <span>Time (to) <small>optional</small></span>
+              <input name="to" type="time" value="${escapeHtml(editorFields.to || "")}" />
+            </label>
+            <label>
+              <span>Header</span>
+              <input name="header" value="${escapeHtml(editorFields.header || "")}" placeholder="Arrival & Lunch" required />
+            </label>
+            <label>
+              <span>Text</span>
+              <textarea name="text" rows="4" placeholder="at the Victoria Inn, Borth">${escapeHtml(editorFields.text || "")}</textarea>
+            </label>
+          </form>
+          <div class="itinerary-editor-actions">
+            ${editor.mode === "edit" ? `<button class="danger" data-action="delete-itinerary-item" type="button">Delete</button>` : `<span></span>`}
+            <button class="secondary" data-action="close-itinerary-editor" type="button">Cancel</button>
+            <button data-action="save-itinerary-item" type="button">Save</button>
+          </div>
+        </div>
+      </section>
+    ` : ""}
+  `;
+}
+
 function TourPageEditorBox(blocks) {
   const cacheKey = tourPageCacheKey(currentTourPageYear(), state.thisTourOverviewPanel);
   const draft = getTourPageDraft(cacheKey, blocks);
@@ -3464,6 +3769,28 @@ function ThisTourOverviewFeature() {
     `;
   }
 
+  if (pageKey === "itinerary") {
+    const rows = state.itineraryRowsByYear[year] || [];
+    const isLoadingItinerary = state.itineraryLoadingYear === year;
+    return `
+      <section class="overview-feature-screen itinerary-feature-screen">
+        <div class="overview-feature-topbar">
+          <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
+          <div class="itinerary-topbar-title">
+            <span>${year}</span>
+            <h1>${escapeHtml(title)}</h1>
+          </div>
+          <span aria-hidden="true"></span>
+        </div>
+        <div class="overview-feature-body">
+          ${state.itineraryError ? Card(`<p class="empty-state">${escapeHtml(state.itineraryError)}</p>`) : ""}
+          ${isLoadingItinerary ? Card(`<p class="empty-state">Loading itinerary...</p>`) : ""}
+          ${!isLoadingItinerary ? Card(ItineraryReadBox(rows), "cms-editor-card itinerary-card") : ""}
+        </div>
+      </section>
+    `;
+  }
+
   const cacheKey = tourPageCacheKey(year, pageKey);
   const page = state.tourPagesByKey[cacheKey];
   const blocks = normaliseTourPageContent(page?.content);
@@ -3473,9 +3800,15 @@ function ThisTourOverviewFeature() {
   const isEditing = state.tourPageEditingKey === cacheKey;
 
   return `
-    <section class="overview-feature-screen ${isEditing ? "editing" : ""}">
+    <section class="overview-feature-screen ${pageKey === "itinerary" ? "itinerary-feature-screen" : ""} ${isEditing ? "editing" : ""}">
       <div class="overview-feature-topbar">
         <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
+        ${pageKey === "itinerary" ? `
+          <div class="itinerary-topbar-title">
+            <span>${year}</span>
+            <h1>${escapeHtml(page?.title || title)}</h1>
+          </div>
+        ` : ""}
         ${!isLoading ? `
           <div class="cms-page-actions">
             ${isEditing ? `<button class="cms-edit-btn secondary" data-action="discard-tour-page">Discard</button>` : ""}
@@ -3483,7 +3816,7 @@ function ThisTourOverviewFeature() {
           </div>
         ` : ""}
       </div>
-      <div class="cms-page-head">
+      <div class="cms-page-head ${pageKey === "itinerary" ? "itinerary-page-head" : ""}">
         <span class="eyebrow">${year}</span>
         <h1>${escapeHtml(page?.title || title)}</h1>
       </div>
@@ -5905,6 +6238,7 @@ app.addEventListener("click", (event) => {
     state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
     state.thisTourOverviewPanel = target.dataset.view;
     state.selectedCourseGuideHole = isCourseGuidePanel(state.thisTourOverviewPanel) ? 0 : null;
+    state.itineraryDayIndex = 0;
     state.courseGuideStripScrollLeft = 0;
     state.courseGuideScorecardOpen = false;
     if (state.thisTourOverviewPanel === "random-nudger-generator") {
@@ -5912,6 +6246,8 @@ app.addEventListener("click", (event) => {
       randomNudgerSpinTimer = null;
       state.randomNudgerDraw = emptyRandomNudgerDraw(state.randomNudgerDraw?.mode || "pairs");
       loadTourProfiles(tours[0]?.supabaseId);
+    } else if (state.thisTourOverviewPanel === "itinerary") {
+      loadItinerary(currentTourPageYear());
     } else if (!["scorecards"].includes(state.thisTourOverviewPanel) && !isCourseGuidePanel(state.thisTourOverviewPanel)) {
       loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
     }
@@ -5920,6 +6256,8 @@ app.addEventListener("click", (event) => {
     state.restoredScrollTop = 0;
     state.thisTourOverviewPanel = "";
     state.selectedCourseGuideHole = null;
+    state.itineraryDayIndex = 0;
+    state.itineraryEditor = null;
     state.courseGuideStripScrollLeft = 0;
     state.courseGuideScorecardOpen = false;
     if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
@@ -5936,6 +6274,37 @@ app.addEventListener("click", (event) => {
   if (action === "course-guide-grid") {
     state.restoredScrollTop = 0;
     state.selectedCourseGuideHole = null;
+  }
+  if (action === "itinerary-tab") {
+    const content = document.querySelector(".content");
+    state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
+    state.itineraryDayIndex = Number(target.dataset.index) || 0;
+    closeItineraryEditor();
+  }
+  if (action === "add-itinerary-item") {
+    const content = document.querySelector(".content");
+    state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
+    openItineraryEditor("add", target.dataset.dayIndex);
+  }
+  if (action === "edit-itinerary-item") {
+    const rows = state.itineraryRowsByYear[currentTourPageYear()] || [];
+    const days = groupItineraryRows(rows);
+    const dayIndex = Number(target.dataset.dayIndex) || 0;
+    const itemIndex = Number(target.dataset.itemIndex) || 0;
+    const content = document.querySelector(".content");
+    state.restoredScrollTop = content ? Math.round(content.scrollTop) : 0;
+    openItineraryEditor("edit", dayIndex, itemIndex, days[dayIndex]?.items?.[itemIndex]);
+  }
+  if (action === "close-itinerary-editor") {
+    closeItineraryEditor();
+  }
+  if (action === "save-itinerary-item") {
+    saveItineraryEditor(false);
+    return;
+  }
+  if (action === "delete-itinerary-item") {
+    saveItineraryEditor(true);
+    return;
   }
   if (action === "open-course-scorecard") {
     const content = document.querySelector(".content");
