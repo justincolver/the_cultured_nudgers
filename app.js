@@ -3411,15 +3411,17 @@ function ItineraryReadBox(rows) {
       <section class="itinerary-day-panel">
         <div class="itinerary-day-heading">
           <h2>${escapeHtml(activeDay.heading)}</h2>
-          <button data-action="add-itinerary-item" data-day-index="${activeIndex}" type="button">Add</button>
+          <button data-action="add-itinerary-item" data-day-index="${activeIndex}" type="button" aria-label="Add itinerary item">+</button>
         </div>
         <div class="itinerary-timeline">
           ${activeDay.items.map((item, itemIndex) => `
             <article class="itinerary-event">
-              <time>${escapeHtml(item.time || "—")}</time>
+              <time>
+                <span>${escapeHtml(item.time || "—")}${item.toTime ? " -" : ""}</span>
+                ${item.toTime ? `<span>${escapeHtml(item.toTime)}</span>` : ""}
+              </time>
               <span class="itinerary-dot" aria-hidden="true"></span>
               <div class="itinerary-event-card">
-                <span class="itinerary-event-icon">${icon(item.iconName)}</span>
                 <div>
                   <h3>${escapeHtml(item.title)}</h3>
                   ${item.subtitle ? `<p>${escapeHtml(item.subtitle)}</p>` : ""}
@@ -5898,6 +5900,24 @@ function BottomNav() {
   `;
 }
 
+function isVideoFullscreenActive() {
+  const fullscreenElement =
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement;
+  if (!fullscreenElement) return false;
+  return Boolean(fullscreenElement.closest?.(".course-video-frame, .course-media-card, .tour-film-frame, .media-video") || fullscreenElement.matches?.("iframe, video"));
+}
+
+function isLikelyMobileDevice() {
+  return navigator.maxTouchPoints > 0 && window.matchMedia("(pointer: coarse)").matches;
+}
+
+function shouldShowDesktopGate() {
+  return window.matchMedia("(min-width: 769px)").matches && !isLikelyMobileDevice() && !isVideoFullscreenActive();
+}
+
 function DesktopGate() {
   return `
     <section class="desktop-gate">
@@ -6034,7 +6054,7 @@ function restoreCourseGuideStripScroll() {
 }
 
 function render() {
-  if (window.matchMedia("(min-width: 769px)").matches) {
+  if (shouldShowDesktopGate()) {
     app.innerHTML = DesktopGate();
     syncBirthdayOverlay();
     return;
@@ -6682,6 +6702,9 @@ document.addEventListener("scroll", (event) => {
   updateActiveTourProfileRail();
 }, true);
 window.addEventListener("resize", render);
+["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"].forEach((eventName) => {
+  document.addEventListener(eventName, render);
+});
 restoreRoute();
 render();
 loadSupabaseData();
