@@ -2682,7 +2682,7 @@ svg {
   display: grid;
   overflow: hidden;
   padding: 0;
-  height: calc(100dvh - 208px - env(safe-area-inset-bottom));
+  height: calc(100dvh - 152px - env(safe-area-inset-bottom));
   min-height: 0;
   border-color: rgba(208, 173, 103, .22);
   background: #f7f4ea;
@@ -2724,15 +2724,22 @@ svg {
 }
 
 .itinerary-day-panel {
+  position: relative;
   display: grid;
   grid-template-rows: auto auto;
   align-content: start;
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: scroll;
   gap: 14px;
-  padding: 18px 14px 22px;
+  padding: 18px 18px 22px 14px;
   background: linear-gradient(180deg, #fffdf7, #f3efe4);
+  scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+}
+
+.itinerary-day-panel::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .itinerary-day-panel h2 {
@@ -2777,7 +2784,7 @@ svg {
   position: absolute;
   top: 17px;
   bottom: 17px;
-  left: 70px;
+  left: 78px;
   width: 2px;
   background: rgba(6, 36, 24, .16);
   content: "";
@@ -2844,17 +2851,41 @@ svg {
 .itinerary-event-card h3 {
   margin: 0;
   color: #062418;
-  font-size: 13px;
+  font-size: 11.7px;
   font-weight: 950;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .itinerary-event-card p {
   margin: 3px 0 0;
   color: rgba(6, 36, 24, .64);
-  font-size: 11px;
+  font-size: 9.9px;
   font-weight: 700;
   line-height: 1.25;
+}
+
+.itinerary-scrollbar {
+  position: absolute;
+  top: 12px;
+  right: 5px;
+  bottom: 12px;
+  z-index: 3;
+  display: none;
+  width: 3px;
+  pointer-events: none;
+}
+
+.itinerary-scrollbar span {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  border-radius: 999px;
+  background: rgba(74, 78, 75, .62);
+}
+
+.itinerary-day-panel.is-scrollable .itinerary-scrollbar {
+  display: block;
 }
 
 .itinerary-event-chevron {

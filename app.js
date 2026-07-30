@@ -3409,6 +3409,7 @@ function ItineraryReadBox(rows) {
         `).join("")}
       </nav>
       <section class="itinerary-day-panel">
+        <span class="itinerary-scrollbar" aria-hidden="true"><span></span></span>
         <div class="itinerary-day-heading">
           <h2>${escapeHtml(activeDay.heading)}</h2>
           <button data-action="add-itinerary-item" data-day-index="${activeIndex}" type="button" aria-label="Add itinerary item">+</button>
@@ -6076,6 +6077,25 @@ function restoreCourseGuideStripScroll() {
   });
 }
 
+function syncItineraryScrollbars() {
+  document.querySelectorAll(".itinerary-day-panel").forEach((panel) => {
+    const rail = panel.querySelector(".itinerary-scrollbar");
+    const thumb = rail?.firstElementChild;
+    if (!rail || !thumb) return;
+
+    const trackHeight = Math.max(panel.clientHeight - 24, 0);
+    const maxScroll = panel.scrollHeight - panel.clientHeight;
+    const isScrollable = maxScroll > 2 && trackHeight > 0;
+    panel.classList.toggle("is-scrollable", isScrollable);
+    if (!isScrollable) return;
+
+    const thumbHeight = Math.max(34, Math.round((panel.clientHeight / panel.scrollHeight) * trackHeight));
+    const thumbTop = Math.round((panel.scrollTop / maxScroll) * Math.max(trackHeight - thumbHeight, 0));
+    thumb.style.height = `${thumbHeight}px`;
+    thumb.style.transform = `translateY(${thumbTop}px)`;
+  });
+}
+
 function render() {
   if (shouldShowDesktopGate()) {
     app.innerHTML = DesktopGate();
@@ -6108,6 +6128,7 @@ function render() {
   syncBirthdayOverlay();
   restoreScrollPosition();
   restoreCourseGuideStripScroll();
+  requestAnimationFrame(syncItineraryScrollbars);
   requestAnimationFrame(updateActiveTourProfileRail);
   if (state.tourPageEditingKey) {
     requestAnimationFrame(() => {
@@ -6720,6 +6741,7 @@ function updateActiveTourProfileRail(forcedProfileId = null) {
 }
 
 document.addEventListener("scroll", (event) => {
+  if (event.target?.classList?.contains("itinerary-day-panel")) syncItineraryScrollbars();
   if (event.target?.closest?.(".tour-profile-picker-grid")) return;
   persistRoute();
   updateActiveTourProfileRail();
