@@ -2049,6 +2049,8 @@ svg {
 }
 
 .itinerary-feature-screen .overview-feature-body {
+  display: grid;
+  min-height: 0;
   margin-top: 10px;
 }
 
@@ -2680,7 +2682,8 @@ svg {
   display: grid;
   overflow: hidden;
   padding: 0;
-  max-height: calc(100dvh - 216px - env(safe-area-inset-bottom));
+  height: calc(100dvh - 208px - env(safe-area-inset-bottom));
+  min-height: 0;
   border-color: rgba(208, 173, 103, .22);
   background: #f7f4ea;
 }
@@ -2748,15 +2751,15 @@ svg {
 
 .itinerary-day-heading button {
   display: grid;
-  width: 48px;
-  min-height: 48px;
+  width: 34px;
+  min-height: 34px;
   place-items: center;
   padding: 0;
   border: 1px solid rgba(6, 36, 24, .14);
   border-radius: 50%;
   background: #083827;
   color: var(--gold-soft);
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 950;
   line-height: 1;
 }
@@ -2780,7 +2783,7 @@ svg {
 .itinerary-event {
   position: relative;
   display: grid;
-  grid-template-columns: 52px 16px minmax(0, 1fr);
+  grid-template-columns: 62px 16px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
 }
@@ -2793,6 +2796,10 @@ svg {
   font-weight: 950;
   line-height: 1.15;
   text-align: right;
+}
+
+.itinerary-event time span {
+  white-space: nowrap;
 }
 
 .itinerary-dot {

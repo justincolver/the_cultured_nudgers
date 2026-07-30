@@ -5918,6 +5918,11 @@ function shouldShowDesktopGate() {
   return window.matchMedia("(min-width: 769px)").matches && !isLikelyMobileDevice() && !isVideoFullscreenActive();
 }
 
+function renderAfterViewportChange() {
+  if (isVideoFullscreenActive()) return;
+  render();
+}
+
 function DesktopGate() {
   return `
     <section class="desktop-gate">
@@ -6701,9 +6706,9 @@ document.addEventListener("scroll", (event) => {
   persistRoute();
   updateActiveTourProfileRail();
 }, true);
-window.addEventListener("resize", render);
+window.addEventListener("resize", renderAfterViewportChange);
 ["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"].forEach((eventName) => {
-  document.addEventListener(eventName, render);
+  document.addEventListener(eventName, renderAfterViewportChange);
 });
 restoreRoute();
 render();
