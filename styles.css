@@ -2875,19 +2875,25 @@ svg {
 
 .itinerary-editor-overlay {
   position: fixed;
-  inset: 0;
-  z-index: 70;
+  top: 0;
+  right: 0;
+  bottom: calc(78px + env(safe-area-inset-bottom));
+  left: 0;
+  z-index: 1000;
   display: grid;
   align-items: end;
-  padding: 18px;
+  padding: 18px 18px 8px;
   background: rgba(1, 9, 7, .68);
   backdrop-filter: blur(6px);
 }
 
 .itinerary-editor-modal {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 14px;
   width: min(100%, 430px);
+  max-height: calc(100dvh - 112px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  min-height: 0;
   justify-self: center;
   padding: 18px;
   border: 1px solid rgba(208, 173, 103, .42);
@@ -2928,6 +2934,10 @@ svg {
 .itinerary-editor-form {
   display: grid;
   gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .itinerary-editor-form label {
@@ -2972,10 +2982,14 @@ svg {
 }
 
 .itinerary-editor-actions {
+  position: sticky;
+  bottom: 0;
   display: grid;
   grid-template-columns: 1fr auto auto;
   gap: 8px;
   align-items: center;
+  padding-top: 4px;
+  background: linear-gradient(180deg, rgba(5, 26, 19, 0), #051a13 34%);
 }
 
 .itinerary-editor-actions button {
