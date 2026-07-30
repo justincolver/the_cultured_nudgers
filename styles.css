@@ -2725,6 +2725,8 @@ svg {
 
 .itinerary-day-panel {
   display: grid;
+  grid-template-rows: auto auto;
+  align-content: start;
   min-height: 0;
   overflow-y: auto;
   gap: 14px;
@@ -2767,6 +2769,7 @@ svg {
 .itinerary-timeline {
   position: relative;
   display: grid;
+  align-content: start;
   gap: 14px;
 }
 

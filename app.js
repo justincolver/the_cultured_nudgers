@@ -5910,6 +5910,18 @@ function isVideoFullscreenActive() {
   return Boolean(fullscreenElement.closest?.(".course-video-frame, .course-media-card, .tour-film-frame, .media-video") || fullscreenElement.matches?.("iframe, video"));
 }
 
+const videoEmbedSelector = ".course-video-frame, .course-media-card, .tour-film-frame, .media-video";
+let videoViewportRenderPauseUntil = 0;
+let videoViewportRenderTimer = null;
+
+function pauseVideoViewportRender(duration = 180000) {
+  videoViewportRenderPauseUntil = Math.max(videoViewportRenderPauseUntil, Date.now() + duration);
+}
+
+function isVideoViewportRenderPaused() {
+  return Date.now() < videoViewportRenderPauseUntil;
+}
+
 function isLikelyMobileDevice() {
   return navigator.maxTouchPoints > 0 && window.matchMedia("(pointer: coarse)").matches;
 }
@@ -5919,7 +5931,13 @@ function shouldShowDesktopGate() {
 }
 
 function renderAfterViewportChange() {
-  if (isVideoFullscreenActive()) return;
+  if (isVideoFullscreenActive() || isVideoViewportRenderPaused()) {
+    window.clearTimeout(videoViewportRenderTimer);
+    videoViewportRenderTimer = window.setTimeout(() => {
+      if (!isVideoFullscreenActive() && !isVideoViewportRenderPaused()) render();
+    }, 300);
+    return;
+  }
   render();
 }
 
@@ -6706,9 +6724,22 @@ document.addEventListener("scroll", (event) => {
   persistRoute();
   updateActiveTourProfileRail();
 }, true);
+["pointerdown", "touchstart", "click"].forEach((eventName) => {
+  document.addEventListener(eventName, (event) => {
+    if (event.target?.closest?.(videoEmbedSelector)) pauseVideoViewportRender();
+  }, true);
+});
+window.addEventListener("blur", () => {
+  if (document.activeElement?.closest?.(videoEmbedSelector) || document.activeElement?.matches?.("iframe, video")) {
+    pauseVideoViewportRender();
+  }
+});
 window.addEventListener("resize", renderAfterViewportChange);
 ["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"].forEach((eventName) => {
-  document.addEventListener(eventName, renderAfterViewportChange);
+  document.addEventListener(eventName, () => {
+    if (isVideoFullscreenActive()) pauseVideoViewportRender();
+    renderAfterViewportChange();
+  });
 });
 restoreRoute();
 render();
