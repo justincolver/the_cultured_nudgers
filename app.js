@@ -1671,9 +1671,10 @@ function itineraryPreviewDayLabel(date = "") {
   if (!date) return "";
   const day = new Date(`${date}T00:00:00`);
   if (Number.isNaN(day.getTime())) return "";
-  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long" }).format(day).toUpperCase();
-  const month = new Intl.DateTimeFormat("en-GB", { month: "short" }).format(day).toUpperCase();
-  return `${weekday}, ${month} ${day.getDate()}`;
+  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(day);
+  const weekdayLabel = weekday === "Thu" ? "Thurs" : weekday;
+  const month = new Intl.DateTimeFormat("en-GB", { month: "short" }).format(day);
+  return `${weekdayLabel}, ${month} ${day.getDate()}`;
 }
 
 function itineraryPreviewItems(rows = [], now = new Date()) {
