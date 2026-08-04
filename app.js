@@ -3977,13 +3977,6 @@ function ThisTourOverview() {
   `;
 }
 
-function lostBallRoundDate(tour, day) {
-  if (!tour?.startDate || !day) return "";
-  const date = new Date(`${tour.startDate}T00:00:00`);
-  date.setDate(date.getDate() + Number(day || 1) - 1);
-  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" }).format(date);
-}
-
 function lostBallSummary(rows = [], playerEntries = []) {
   const totalsByPlayer = playerEntries.map(({ player }) => {
     const total = rows
@@ -3998,6 +3991,20 @@ function lostBallSummary(rows = [], playerEntries = []) {
     worst,
     average: playerEntries.length ? totalLostBalls / playerEntries.length : 0,
   };
+}
+
+function lostBallRoundTotal(rows = [], courseId) {
+  return rows
+    .filter((row) => Number(row.course_id) === Number(courseId))
+    .reduce((sum, row) => sum + Number(row.number_of_lost_balls || 0), 0);
+}
+
+function lostBallDayLabel(tour, course, index) {
+  if (!tour?.startDate || !course?.day) return `Day ${index + 1}`;
+  const date = new Date(`${tour.startDate}T00:00:00`);
+  date.setDate(date.getDate() + Number(course.day || 1) - 1);
+  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(date);
+  return `Day ${index + 1} - ${weekday === "Thu" ? "Thur" : weekday}`;
 }
 
 function LostBallsPage(tour = tours[0]) {
@@ -4042,9 +4049,9 @@ function LostBallsPage(tour = tours[0]) {
       <div class="lost-balls-rounds">
         ${rounds.map((course, index) => `
           <div>
-            <strong>Day ${index + 1}</strong>
+            <strong>${escapeHtml(lostBallDayLabel(tour, course, index))}</strong>
             <span>${escapeHtml(shortCourseName(course.course_name))}</span>
-            <small>${escapeHtml(lostBallRoundDate(tour, course.day))}</small>
+            <small>Total - ${lostBallRoundTotal(rows, course.id)}</small>
           </div>
         `).join("")}
       </div>
@@ -4053,7 +4060,7 @@ function LostBallsPage(tour = tours[0]) {
           <thead>
             <tr>
               <th>Player</th>
-              ${rounds.map((course, index) => `<th>Day ${index + 1}<small>${escapeHtml(shortCourseName(course.course_name))}</small></th>`).join("")}
+              ${rounds.map((course, index) => `<th>${escapeHtml(lostBallDayLabel(tour, course, index))}<small>${escapeHtml(shortCourseName(course.course_name))}</small></th>`).join("")}
               <th>Total</th>
             </tr>
           </thead>
@@ -4065,7 +4072,7 @@ function LostBallsPage(tour = tours[0]) {
                   <th>
                     <div class="lost-balls-player">
                       ${Avatar(player)}
-                      <span><b>${escapeHtml(player.player_name)}</b>${playerNickname(player) ? `<small>"${escapeHtml(playerNickname(player))}"</small>` : ""}</span>
+                      <span><b>${escapeHtml(player.player_name)}</b></span>
                     </div>
                   </th>
                   ${rounds.map((course) => {

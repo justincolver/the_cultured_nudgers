@@ -3195,9 +3195,10 @@ svg {
 
 .lost-balls-table {
   width: 100%;
-  min-width: 620px;
+  min-width: 522px;
   border-collapse: collapse;
   color: #062418;
+  table-layout: fixed;
 }
 
 .lost-balls-table th,
@@ -3226,6 +3227,41 @@ svg {
   text-transform: uppercase;
 }
 
+.lost-balls-table th:first-child,
+.lost-balls-table td:first-child {
+  width: 132px;
+}
+
+.lost-balls-table th:nth-child(2),
+.lost-balls-table td:nth-child(2),
+.lost-balls-table th:nth-child(3),
+.lost-balls-table td:nth-child(3),
+.lost-balls-table th:nth-child(4),
+.lost-balls-table td:nth-child(4) {
+  width: 100px;
+}
+
+.lost-balls-table th:nth-child(5),
+.lost-balls-table td:nth-child(5) {
+  width: 90px;
+}
+
+.lost-balls-table thead th:first-child,
+.lost-balls-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+.lost-balls-table thead th:first-child {
+  z-index: 4;
+}
+
+.lost-balls-table tbody th {
+  background: #f8f5ed;
+  box-shadow: 6px 0 12px rgba(6, 36, 24, .08);
+}
+
 .lost-balls-table thead small {
   display: block;
   margin-top: 2px;
@@ -3241,35 +3277,27 @@ svg {
 
 .lost-balls-player {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px;
   align-items: center;
 }
 
 .lost-balls-player .avatar {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   font-size: 10px;
 }
 
 .lost-balls-player b {
   display: block;
   color: #062418;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.1;
-}
-
-.lost-balls-player small {
-  display: block;
-  margin-top: 2px;
-  color: rgba(6, 36, 24, .62);
-  font-size: 9px;
-  font-style: italic;
 }
 
 .lost-balls-stepper {
   display: grid;
-  grid-template-columns: 24px 24px 24px;
+  grid-template-columns: 22px 24px 22px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
