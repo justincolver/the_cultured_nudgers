@@ -2125,6 +2125,35 @@ svg {
   min-height: 104px;
 }
 
+.this-tour-card-wide {
+  grid-column: 1 / -1;
+  min-height: 94px;
+}
+
+.this-tour-card-packing {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  justify-content: initial;
+  column-gap: 12px;
+}
+
+.this-tour-card-packing .tour-card-icon {
+  margin-bottom: 0;
+}
+
+.this-tour-card-packing strong,
+.this-tour-card-packing small {
+  grid-column: 2;
+}
+
+.this-tour-card-packing .tour-card-link {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: center;
+  padding-top: 0;
+}
+
 .tour-card-avatars {
   position: relative;
   display: flex;

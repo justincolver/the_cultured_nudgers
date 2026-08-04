@@ -4115,6 +4115,12 @@ function ThisTourOverview() {
         <small>Meet the tourists</small>
         <span class="tour-card-link">View profiles ${icon("chevron")}</span>
       </button>
+      <button class="this-tour-card this-tour-card-wide this-tour-card-packing" data-action="overview-panel" data-view="packing-list" type="button">
+        <span class="tour-card-icon">${icon("suitcase")}</span>
+        <strong>Packing List</strong>
+        <small>Tour essentials, kit reminders and things not to forget</small>
+        <span class="tour-card-link">Open packing list ${icon("chevron")}</span>
+      </button>
     </div>
   `;
 }
