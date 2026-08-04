@@ -252,7 +252,10 @@ async function supabaseWrite(path, { method = "POST", body } = {}) {
     body: JSON.stringify(body),
   });
 
-  if (!response.ok) throw new Error(`Supabase write failed: ${response.status}`);
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(`Supabase write failed: ${response.status}${message ? ` ${message}` : ""}`);
+  }
   return response.status === 204 ? null : response.json();
 }
 
@@ -777,6 +780,175 @@ async function updateLostBalls(playerId, courseId, delta) {
   }
 }
 
+async function loadDraw(tour = tours[0], { force = false } = {}) {
+  const tourId = Number(tour?.supabaseId);
+  if (!tourId || (!force && state.drawByTourId[tourId]) || state.drawLoadingTourId === tourId) return;
+
+  state.drawLoadingTourId = tourId;
+  state.drawError = "";
+  render();
+
+  try {
+    if (!state.tourProfilesByTourId[tourId]) {
+      state.tourProfilesByTourId[tourId] = await supabaseFetch(
+        `player_tour_profiles?select=*&tour_id=eq.${tourId}&order=player_id.asc`
+      );
+    }
+    state.drawByTourId[tourId] = await supabaseFetch(
+      `draw?select=*&order=tee_number.asc&order=id.asc`
+    );
+  } catch (error) {
+    console.warn(error);
+    state.drawError = "Could not load matches.";
+  } finally {
+    state.drawLoadingTourId = null;
+    render();
+  }
+}
+
+function emptyDrawEditor(type = "singles") {
+  const normalizedType = String(type || "singles").toLowerCase() === "doubles" ? "Doubles" : "Singles";
+  return {
+    mode: "add",
+    id: null,
+    type: normalizedType,
+    tee_number: 1,
+    crocombe_player_1: "",
+    crocombe_player_2: "",
+    foster_player_1: "",
+    foster_player_2: "",
+  };
+}
+
+function drawEditorForRow(row = {}) {
+  const normalizedType = String(row.type || "Singles").toLowerCase() === "doubles" ? "Doubles" : "Singles";
+  return {
+    mode: "edit",
+    id: row.id,
+    type: normalizedType,
+    tee_number: row.tee_number || 1,
+    crocombe_player_1: row.crocombe_player_1 || "",
+    crocombe_player_2: row.crocombe_player_2 || "",
+    foster_player_1: row.foster_player_1 || "",
+    foster_player_2: row.foster_player_2 || "",
+  };
+}
+
+function readDrawEditorForm() {
+  const form = document.querySelector(".draw-editor-form");
+  if (!form) return null;
+  const formData = new FormData(form);
+  const type = String(formData.get("type") || "Singles").toLowerCase() === "doubles" ? "Doubles" : "Singles";
+  const teeNumber = Number(formData.get("tee_number") || 1);
+  return {
+    type,
+    tee_number: teeNumber,
+    crocombe_player_1: Number(formData.get("crocombe_player_1") || 0) || null,
+    crocombe_player_2: type === "Doubles" ? Number(formData.get("crocombe_player_2") || 0) || null : null,
+    foster_player_1: Number(formData.get("foster_player_1") || 0) || null,
+    foster_player_2: type === "Doubles" ? Number(formData.get("foster_player_2") || 0) || null : null,
+  };
+}
+
+function drawEditorWithFormValues(editor = state.drawEditor) {
+  const values = readDrawEditorForm();
+  return editor && values ? { ...editor, ...values } : editor;
+}
+
+function changeDrawEditorTee(delta = 0) {
+  const editor = drawEditorWithFormValues();
+  if (!editor) return;
+  const current = Math.max(1, Number(editor.tee_number) || 1);
+  state.drawError = "";
+  state.drawEditor = {
+    ...editor,
+    tee_number: Math.max(1, current + Number(delta || 0)),
+  };
+}
+
+async function saveDrawMatch() {
+  const tour = tours[0];
+  const tourId = Number(tour?.supabaseId);
+  const editor = drawEditorWithFormValues();
+  state.drawEditor = editor;
+  const values = readDrawEditorForm();
+  const missingRequired =
+    !tourId ||
+    !editor ||
+    !values?.tee_number ||
+    !values.crocombe_player_1 ||
+    !values.foster_player_1;
+  if (missingRequired) {
+    state.drawError = "Cant save. Add a tee number and all players.";
+    render();
+    return;
+  }
+
+  state.drawSaving = true;
+  state.drawError = "";
+  render();
+
+  try {
+    const body = { ...values };
+    if (editor.mode === "edit" && editor.id) {
+      await supabaseWrite(`draw?id=eq.${encodeURIComponent(editor.id)}`, { method: "PATCH", body });
+    } else {
+      await supabaseWrite("draw", { body });
+    }
+    state.drawEditor = null;
+    await loadDraw(tour, { force: true });
+  } catch (error) {
+    console.warn(error);
+    state.drawError = "Cant save.";
+  } finally {
+    state.drawSaving = false;
+    render();
+  }
+}
+
+async function deleteDrawMatch(rowId) {
+  const tour = tours[0];
+  if (!rowId || state.drawSaving) return;
+  state.drawSaving = true;
+  state.drawError = "";
+  render();
+
+  try {
+    await supabaseWrite(`draw?id=eq.${encodeURIComponent(rowId)}`, { method: "DELETE", body: {} });
+    state.drawEditor = null;
+    await loadDraw(tour, { force: true });
+  } catch (error) {
+    console.warn(error);
+    state.drawError = "Could not delete match.";
+  } finally {
+    state.drawSaving = false;
+    render();
+  }
+}
+
+async function deleteAllDrawMatches() {
+  const tour = tours[0];
+  const tourId = Number(tour?.supabaseId);
+  if (!tourId || state.drawSaving) return;
+
+  state.drawSaving = true;
+  state.drawError = "";
+  state.drawConfirmDeleteAll = false;
+  render();
+
+  try {
+    await supabaseWrite("draw?id=not.is.null", { method: "DELETE", body: {} });
+    state.drawEditor = null;
+    await loadDraw(tour, { force: true });
+  } catch (error) {
+    console.warn(error);
+    state.drawError = "Could not delete all matches.";
+  } finally {
+    state.drawSaving = false;
+    render();
+  }
+}
+
 async function loadIndividualMatches() {
   const playerId = state.selectedIndividualPlayerId;
   if (!playerId) return;
@@ -1160,12 +1332,16 @@ async function loadSupabaseData() {
       state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
       loadItinerary(tours[0]?.year);
       loadTourProfiles(tours[0]?.supabaseId);
+      loadDraw(tours[0]);
     }
     if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel === "random-nudger-generator") {
       loadTourProfiles(tours[0]?.supabaseId);
     }
     if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel === "lost-balls") {
       loadLostBalls(tours[0]);
+    }
+    if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel === "draw") {
+      loadDraw(tours[0]);
     }
     if (state.tab === "media") {
       loadMediaLibrary();
@@ -1177,7 +1353,7 @@ async function loadSupabaseData() {
       state.tab === "this-tour" &&
       state.detailSubTab === "Overview" &&
       state.thisTourOverviewPanel &&
-      !["scorecards", "random-nudger-generator"].includes(state.thisTourOverviewPanel) &&
+      !["scorecards", "random-nudger-generator", "draw"].includes(state.thisTourOverviewPanel) &&
       !isCourseGuidePanel(state.thisTourOverviewPanel)
     ) {
       if (state.thisTourOverviewPanel === "itinerary") {
@@ -1285,6 +1461,12 @@ let state = {
   lostBallsLoadingTourId: null,
   lostBallsSavingKey: "",
   lostBallsError: "",
+  drawByTourId: {},
+  drawLoadingTourId: null,
+  drawSaving: false,
+  drawError: "",
+  drawEditor: null,
+  drawConfirmDeleteAll: false,
   hallOfFameRows: [],
   hallOfFameLoading: false,
   hallOfFameLoaded: false,
@@ -1735,6 +1917,199 @@ function ThisTourItineraryPreview(tour) {
         </div>
       `).join("")}
     </div>
+  `;
+}
+
+function drawRowsForTour(tour = tours[0]) {
+  const rows = state.drawByTourId[Number(tour?.supabaseId)] || [];
+  return [...rows].sort((a, b) => {
+    const teeCompare = Number(a.tee_number || 0) - Number(b.tee_number || 0);
+    if (teeCompare) return teeCompare;
+    return Number(a.id || 0) - Number(b.id || 0);
+  });
+}
+
+function drawPlayer(id) {
+  return getPlayerById(id) || null;
+}
+
+function drawPlayerDisplay(id, fallback = "TBC") {
+  const player = drawPlayer(id);
+  return player?.player_name || fallback;
+}
+
+function drawTeamPlayers(row = {}, side = "crocombe") {
+  const first = row[`${side}_player_1`];
+  const second = row[`${side}_player_2`];
+  return [first, second].filter(Boolean).map((id) => drawPlayer(id)).filter(Boolean);
+}
+
+function DrawPlayerChip(player) {
+  if (!player) return `<span class="draw-player-chip tbc"><b>TBC</b></span>`;
+  return `
+    <span class="draw-player-chip">
+      ${Avatar(player, "draw-player-avatar")}
+      <b>${escapeHtml(firstNameForPlayer(player))}</b>
+    </span>
+  `;
+}
+
+function DrawMatchLine(row, { editable = false } = {}) {
+  const crocombePlayers = drawTeamPlayers(row, "crocombe");
+  const fosterPlayers = drawTeamPlayers(row, "foster");
+  const crocombeFallback = [row.crocombe_player_1, row.crocombe_player_2].filter(Boolean).map((id) => drawPlayerDisplay(id));
+  const fosterFallback = [row.foster_player_1, row.foster_player_2].filter(Boolean).map((id) => drawPlayerDisplay(id));
+  return `
+    <article class="draw-match-row">
+      <div class="draw-match-time">
+        <strong>Tee ${escapeHtml(String(row.tee_number || 1))}</strong>
+      </div>
+      <div class="draw-match-card">
+        <div class="draw-match-team crocombe">
+          <small>${editable ? "Team Crocombe" : ""}</small>
+          ${(crocombePlayers.length ? crocombePlayers.map(DrawPlayerChip) : crocombeFallback.map((name) => `<span class="draw-player-chip tbc"><b>${escapeHtml(firstNameFromName(name))}</b></span>`)).join("")}
+        </div>
+        <span class="draw-vs">VS</span>
+        <div class="draw-match-team foster">
+          <small>${editable ? "Team Foster" : ""}</small>
+          ${(fosterPlayers.length ? fosterPlayers.map(DrawPlayerChip) : fosterFallback.map((name) => `<span class="draw-player-chip tbc"><b>${escapeHtml(firstNameFromName(name))}</b></span>`)).join("")}
+        </div>
+        ${editable ? `<button class="draw-row-edit" data-action="edit-draw-match" data-row-id="${row.id}" type="button" aria-label="Edit match">${icon("more")}</button>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function DrawPreviewCard(tour = tours[0]) {
+  const rows = drawRowsForTour(tour).slice(0, 3);
+  const isLoading = state.drawLoadingTourId === Number(tour?.supabaseId);
+  return `
+    <section class="this-tour-matches-card">
+      <div class="matches-preview-head">
+        <span class="tour-card-icon">${icon("swap")}</span>
+        <div>
+          <strong>Matches</strong>
+          <small>Thursday tee times</small>
+        </div>
+        <button data-action="overview-panel" data-view="draw" type="button">View full draw ${icon("chevron")}</button>
+      </div>
+      <div class="matches-preview-list">
+        ${isLoading && !rows.length ? `<p class="empty-state">Loading matches...</p>` : ""}
+        ${!isLoading && !rows.length ? `<p class="empty-state">No matches in the draw yet.</p>` : ""}
+        ${rows.map((row) => DrawMatchLine(row)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function DrawPlayerOptions(selected = "") {
+  const entries = playersForTour(tours[0]);
+  const playersList = entries.length ? entries.map(({ player }) => player) : allPlayers;
+  return `
+    <option value="">Choose player</option>
+    ${playersList.map((player) => `<option value="${player.id}" ${String(selected) === String(player.id) ? "selected" : ""}>${escapeHtml(player.player_name)}</option>`).join("")}
+  `;
+}
+
+function DrawPlayerSelect(name, label, selected = "") {
+  return `
+    <label>
+      <span>${escapeHtml(label)}</span>
+      <select name="${name}">${DrawPlayerOptions(selected)}</select>
+    </label>
+  `;
+}
+
+function DrawEditorForm() {
+  const editor = state.drawEditor;
+  if (!editor) return "";
+  const doubles = String(editor.type || "").toLowerCase() === "doubles";
+  return `
+    <section class="draw-editor-overlay" role="dialog" aria-modal="true" aria-label="${editor.mode === "edit" ? "Edit match" : `Add ${doubles ? "doubles" : "singles"} match`}">
+      <div class="draw-editor-panel">
+        <div class="draw-editor-head">
+          <div>
+            <h2>${editor.mode === "edit" ? "Edit Match" : `Add ${doubles ? "Doubles" : "Singles"} Match`}</h2>
+            <p>${doubles ? "Pick two players per team" : "Pick one player per team"}</p>
+          </div>
+          <button class="draw-editor-close" data-action="cancel-draw-editor" type="button" aria-label="Close match editor">×</button>
+        </div>
+        <form class="draw-editor-form">
+          <input type="hidden" name="type" value="${escapeHtml(editor.type)}" />
+          ${state.drawError ? `<p class="draw-editor-error">${escapeHtml(state.drawError)}</p>` : ""}
+          <div class="draw-editor-grid compact">
+            <label>
+              <span>Tee</span>
+              <div class="draw-tee-stepper">
+                <button data-action="draw-tee-change" data-delta="-1" type="button" ${Number(editor.tee_number || 1) <= 1 ? "disabled" : ""}>-</button>
+                <input name="tee_number" type="number" min="1" inputmode="numeric" value="${escapeHtml(String(editor.tee_number || 1))}" readonly />
+                <button data-action="draw-tee-change" data-delta="1" type="button">+</button>
+              </div>
+            </label>
+          </div>
+          <div class="draw-editor-teams">
+            <fieldset>
+              <legend>Team Crocombe</legend>
+              ${DrawPlayerSelect("crocombe_player_1", doubles ? "Player 1" : "Player", editor.crocombe_player_1)}
+              ${doubles ? DrawPlayerSelect("crocombe_player_2", "Player 2", editor.crocombe_player_2) : ""}
+            </fieldset>
+            <fieldset>
+              <legend>Team Foster</legend>
+              ${DrawPlayerSelect("foster_player_1", doubles ? "Player 1" : "Player", editor.foster_player_1)}
+              ${doubles ? DrawPlayerSelect("foster_player_2", "Player 2", editor.foster_player_2) : ""}
+            </fieldset>
+          </div>
+        </form>
+        <div class="draw-editor-actions">
+          ${editor.mode === "edit" ? `<button class="draw-delete-btn" data-action="delete-draw-match" data-row-id="${editor.id}" type="button">Delete</button>` : `<button class="secondary" data-action="cancel-draw-editor" type="button">Cancel</button>`}
+          <button data-action="save-draw-match" type="button" ${state.drawSaving ? "disabled" : ""}>${state.drawSaving ? "Saving..." : "Save"}</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function DrawDeleteAllConfirm() {
+  if (!state.drawConfirmDeleteAll) return "";
+  return `
+    <section class="draw-editor-overlay" role="dialog" aria-modal="true" aria-label="Confirm delete all matches">
+      <div class="draw-confirm-panel">
+        <button class="draw-editor-close" data-action="cancel-delete-all-draw" type="button" aria-label="Close confirmation">×</button>
+        <h2>Are you sure you want to delete all matches?</h2>
+        <div class="draw-editor-actions">
+          <button class="secondary" data-action="cancel-delete-all-draw" type="button">Cancel</button>
+          <button class="draw-delete-btn" data-action="confirm-delete-all-draw" type="button" ${state.drawSaving ? "disabled" : ""}>Delete All</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function DrawPage(tour = tours[0]) {
+  const rows = drawRowsForTour(tour);
+  const isLoading = state.drawLoadingTourId === Number(tour?.supabaseId);
+  return `
+    <section class="overview-feature-screen draw-screen">
+      <div class="draw-topbar">
+        <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")} <span>Back</span></button>
+        <div>
+          <h1>Matches</h1>
+          <p>${escapeHtml(tourDisplayName(tour))} ${escapeHtml(String(tour?.year || ""))}</p>
+        </div>
+        <button class="draw-delete-all" data-action="delete-all-draw" type="button" ${!rows.length || state.drawSaving ? "disabled" : ""}>Delete All</button>
+      </div>
+      <div class="draw-add-actions">
+        <button data-action="add-draw-match" data-type="singles" type="button">+ Add Singles match</button>
+        <button data-action="add-draw-match" data-type="doubles" type="button">+ Add Doubles match</button>
+      </div>
+      ${DrawEditorForm()}
+      ${DrawDeleteAllConfirm()}
+      <div class="draw-match-list">
+        ${isLoading && !rows.length ? Card(`<p class="empty-state">Loading matches...</p>`) : ""}
+        ${!isLoading && !rows.length ? Card(`<p class="empty-state">No matches in the draw yet.</p>`) : ""}
+        ${rows.map((row) => DrawMatchLine(row, { editable: true })).join("")}
+      </div>
+    </section>
   `;
 }
 
@@ -3144,9 +3519,9 @@ const thisTourOverviewActions = [
   ["Travel Info", "plane", "travel-info"],
   ["Aberdovey Course Guide", "image", "aberdovey-course-guide"],
   ["Borth Course Guide", "image", "borth-course-guide"],
-  ["Tee Times", "flag", "tee-times"],
   ["Scorecards", "badge", "scorecards"],
   ["Lost Balls", "ball", "lost-balls"],
+  ["Matches", "swap", "draw"],
   ["Random Nudger Generator", "shuffle", "random-nudger-generator"],
 ];
 
@@ -4022,6 +4397,10 @@ function ThisTourOverviewFeature() {
     return LostBallsPage(tours[0]);
   }
 
+  if (pageKey === "draw") {
+    return DrawPage(tours[0]);
+  }
+
   const cacheKey = tourPageCacheKey(year, pageKey);
   const page = state.tourPagesByKey[cacheKey];
   const blocks = normaliseTourPageContent(page?.content);
@@ -4100,6 +4479,7 @@ function ThisTourOverview() {
         <small>Tour essentials, kit reminders and things not to forget</small>
         <span class="tour-card-link">Open packing list ${icon("chevron")}</span>
       </button>
+      ${DrawPreviewCard(tour)}
     </div>
   `;
 }
@@ -6565,6 +6945,7 @@ app.addEventListener("click", (event) => {
       state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
       loadItinerary(tours[0]?.year);
       loadTourProfiles(tours[0]?.supabaseId);
+      loadDraw(tours[0]);
     }
     if (state.tab === "profiles") {
       state.touristProfileOpen = false;
@@ -6665,6 +7046,7 @@ app.addEventListener("click", (event) => {
     state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
     loadItinerary(tours[0]?.year);
     loadTourProfiles(tours[0]?.supabaseId);
+    loadDraw(tours[0]);
   }
   if (action === "refresh-app-update") {
     if (waitingServiceWorker) {
@@ -6717,6 +7099,7 @@ app.addEventListener("click", (event) => {
     state.itineraryDayIndex = 0;
     state.courseGuideStripScrollLeft = 0;
     state.courseGuideScorecardOpen = false;
+    state.drawEditor = null;
     if (state.thisTourOverviewPanel === "random-nudger-generator") {
       if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
       randomNudgerSpinTimer = null;
@@ -6726,6 +7109,8 @@ app.addEventListener("click", (event) => {
       loadItinerary(currentTourPageYear());
     } else if (state.thisTourOverviewPanel === "lost-balls") {
       loadLostBalls(tours[0]);
+    } else if (state.thisTourOverviewPanel === "draw") {
+      loadDraw(tours[0]);
     } else if (!["scorecards"].includes(state.thisTourOverviewPanel) && !isCourseGuidePanel(state.thisTourOverviewPanel)) {
       loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
     }
@@ -6736,6 +7121,7 @@ app.addEventListener("click", (event) => {
     state.selectedCourseGuideHole = null;
     state.itineraryDayIndex = 0;
     state.itineraryEditor = null;
+    state.drawEditor = null;
     state.courseGuideStripScrollLeft = 0;
     state.courseGuideScorecardOpen = false;
     if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
@@ -6786,6 +7172,46 @@ app.addEventListener("click", (event) => {
   }
   if (action === "lost-balls-change") {
     updateLostBalls(target.dataset.playerId, target.dataset.courseId, target.dataset.delta);
+    return;
+  }
+  if (action === "add-draw-match") {
+    state.drawError = "";
+    state.drawConfirmDeleteAll = false;
+    state.drawEditor = emptyDrawEditor(target.dataset.type || "singles");
+  }
+  if (action === "edit-draw-match") {
+    const row = drawRowsForTour(tours[0]).find((item) => String(item.id) === String(target.dataset.rowId));
+    if (row) {
+      state.drawError = "";
+      state.drawConfirmDeleteAll = false;
+      state.drawEditor = drawEditorForRow(row);
+    }
+  }
+  if (action === "cancel-draw-editor") {
+    state.drawError = "";
+    state.drawEditor = null;
+  }
+  if (action === "draw-tee-change") {
+    changeDrawEditorTee(target.dataset.delta);
+  }
+  if (action === "save-draw-match") {
+    saveDrawMatch();
+    return;
+  }
+  if (action === "delete-draw-match") {
+    deleteDrawMatch(target.dataset.rowId);
+    return;
+  }
+  if (action === "delete-all-draw") {
+    state.drawError = "";
+    state.drawEditor = null;
+    state.drawConfirmDeleteAll = true;
+  }
+  if (action === "cancel-delete-all-draw") {
+    state.drawConfirmDeleteAll = false;
+  }
+  if (action === "confirm-delete-all-draw") {
+    deleteAllDrawMatches();
     return;
   }
   if (action === "open-course-scorecard") {
