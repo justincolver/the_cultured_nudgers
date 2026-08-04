@@ -1738,20 +1738,6 @@ function ThisTourItineraryPreview(tour) {
   `;
 }
 
-function ThisTourProfilesPreview(tour) {
-  const playerEntries = playersForTour(tour).slice(0, 9);
-  if (!playerEntries.length) return "";
-
-  return `
-    <div class="tour-card-avatars" aria-hidden="true">
-      ${playerEntries.map(({ player }) => {
-        const headshot = headshotForPlayer(player);
-        return `<span>${headshot ? `<img src="${headshot}" alt="" />` : escapeHtml(getInitials(player.player_name))}</span>`;
-      }).join("")}
-    </div>
-  `;
-}
-
 const aberdoveyCourseHoles = [
   {
     number: 1,
@@ -4108,14 +4094,7 @@ function ThisTourOverview() {
         <small>Track the damage across all rounds</small>
         <span class="tour-card-link">Open tracker ${icon("chevron")}</span>
       </button>
-      <button class="this-tour-card this-tour-card-profiles" data-action="detail-subtab" data-tab="Profiles" type="button">
-        <span class="tour-card-icon">${icon("people")}</span>
-        ${ThisTourProfilesPreview(tour)}
-        <strong>Profiles</strong>
-        <small>Meet the tourists</small>
-        <span class="tour-card-link">View profiles ${icon("chevron")}</span>
-      </button>
-      <button class="this-tour-card this-tour-card-wide this-tour-card-packing" data-action="overview-panel" data-view="packing-list" type="button">
+      <button class="this-tour-card this-tour-card-packing" data-action="overview-panel" data-view="packing-list" type="button">
         <span class="tour-card-icon">${icon("suitcase")}</span>
         <strong>Packing List</strong>
         <small>Tour essentials, kit reminders and things not to forget</small>
