@@ -2021,6 +2021,25 @@ svg {
   min-height: 216px;
 }
 
+.this-tour-card-itinerary {
+  justify-content: flex-start;
+}
+
+.this-tour-card-itinerary > .tour-card-icon {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+}
+
+.this-tour-card-itinerary > strong,
+.this-tour-card-itinerary > small {
+  margin-left: 44px;
+}
+
+.this-tour-card-itinerary > strong {
+  margin-top: 4px;
+}
+
 .this-tour-card-itinerary::before {
   display: none;
 }
@@ -2032,48 +2051,65 @@ svg {
 .tour-card-mini-list {
   display: grid;
   width: 100%;
-  gap: 8px;
-  margin: 10px 0 2px;
-  padding-left: 8px;
-  border-left: 1px solid rgba(208, 173, 103, .5);
+  gap: 9px;
+  margin: 14px 0 2px;
+  padding-left: 5px;
+  background: linear-gradient(90deg, transparent 8px, rgba(208, 173, 103, .72) 8px, rgba(208, 173, 103, .72) 10px, transparent 10px);
 }
 
 .tour-card-mini-list > div {
   display: grid;
-  grid-template-columns: 36px 1fr;
+  grid-template-columns: 18px minmax(0, 1fr);
   gap: 8px;
   align-items: start;
 }
 
+.tour-card-mini-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  background: var(--card-2);
+  border: 2px solid var(--gold-soft);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(5, 32, 22, .9);
+}
+
+.tour-card-mini-copy {
+  min-width: 0;
+}
+
 .tour-card-mini-list time {
+  display: block;
   color: var(--gold-soft);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 900;
+  line-height: 1.05;
 }
 
 .tour-card-mini-list strong {
   display: block;
-  overflow: hidden;
-  font-size: 10px;
-  line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  color: var(--cream);
+  font-size: 12px;
+  line-height: 1.05;
+  text-transform: none;
 }
 
 .tour-card-mini-list small {
   display: -webkit-box;
   overflow: hidden;
   margin-top: 3px;
-  color: rgba(248, 242, 223, .62);
-  font-size: 8px;
-  line-height: 1.2;
+  color: rgba(248, 242, 223, .72);
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.18;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-.tour-card-mini-list .current time,
-.tour-card-mini-list .current strong {
-  color: var(--gold-soft);
+.tour-card-mini-list .current .tour-card-mini-dot {
+  border-color: var(--gold-soft);
+  background: rgba(208, 173, 103, .22);
 }
 
 .this-tour-card-photo {

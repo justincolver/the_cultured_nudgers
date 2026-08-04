@@ -1697,8 +1697,9 @@ function ThisTourItineraryPreview(tour) {
     <div class="tour-card-mini-list">
       ${previewItems.map((row, index) => `
         <div class="${row.isLive || index === 0 ? "current" : ""}">
-          <time>${escapeHtml(formatItineraryTime(row.time_from))}</time>
-          <span>
+          <span class="tour-card-mini-dot" aria-hidden="true"></span>
+          <span class="tour-card-mini-copy">
+            <time>${escapeHtml(formatItineraryTime(row.time_from))}</time>
             <strong>${escapeHtml(row.header || "Itinerary item")}</strong>
             <small>${escapeHtml(row.text || itineraryDayHeading(row.date))}</small>
           </span>
