@@ -661,6 +661,122 @@ async function saveItineraryRow({ method = "POST", rowId = null, body = null, ye
   }
 }
 
+function roundsForTour(tour = tours[0]) {
+  const year = Number(yearFromTour(tour));
+  return allCourses
+    .filter((course) => Number(course.year) === year)
+    .sort((a, b) => Number(a.day || 0) - Number(b.day || 0) || Number(a.id || 0) - Number(b.id || 0))
+    .slice(0, 3);
+}
+
+function playersForTour(tour = tours[0]) {
+  const rows = (state.tourProfilesByTourId[tour?.supabaseId] || [])
+    .filter((row) => row.on_tour === true || row.on_tour === "true");
+
+  return rows
+    .map((row) => ({
+      profile: row,
+      player: getPlayerById(row.player_id) || { id: row.player_id, player_name: `Player ${row.player_id}` },
+    }))
+    .sort((a, b) => String(a.player.player_name || "").localeCompare(String(b.player.player_name || "")));
+}
+
+function lostBallRowFor(rows = [], playerId, courseId) {
+  return rows.find((row) => Number(row.player_id) === Number(playerId) && Number(row.course_id) === Number(courseId));
+}
+
+async function loadLostBalls(tour = tours[0], { force = false, seedMissing = true } = {}) {
+  const tourId = Number(tour?.supabaseId);
+  if (!tourId || (!force && state.lostBallsByTourId[tourId]) || state.lostBallsLoadingTourId === tourId) return;
+
+  state.lostBallsLoadingTourId = tourId;
+  state.lostBallsError = "";
+  render();
+
+  try {
+    if (!state.tourProfilesByTourId[tourId]) {
+      state.tourProfilesByTourId[tourId] = await supabaseFetch(
+        `player_tour_profiles?select=*&tour_id=eq.${tourId}&order=player_id.asc`
+      );
+    }
+
+    const rows = await supabaseFetch(`lost_balls?select=*&tour_id=eq.${tourId}&order=player_id.asc&order=course_id.asc`);
+    state.lostBallsByTourId[tourId] = rows;
+
+    const playerIds = playersForTour(tour).map(({ player }) => Number(player.id)).filter(Boolean);
+    const courseIds = roundsForTour(tour).map((course) => Number(course.id)).filter(Boolean);
+    const missingRows = [];
+
+    playerIds.forEach((playerId) => {
+      courseIds.forEach((courseId) => {
+        if (!lostBallRowFor(rows, playerId, courseId)) {
+          missingRows.push({
+            player_id: playerId,
+            tour_id: tourId,
+            course_id: courseId,
+            number_of_lost_balls: 0,
+          });
+        }
+      });
+    });
+
+    if (seedMissing && missingRows.length) {
+      await supabaseWrite("lost_balls", { body: missingRows });
+      state.lostBallsByTourId[tourId] = await supabaseFetch(
+        `lost_balls?select=*&tour_id=eq.${tourId}&order=player_id.asc&order=course_id.asc`
+      );
+    }
+  } catch (error) {
+    console.warn(error);
+    state.lostBallsError = "Could not load lost balls.";
+  } finally {
+    state.lostBallsLoadingTourId = null;
+    render();
+  }
+}
+
+async function updateLostBalls(playerId, courseId, delta) {
+  const tour = tours[0];
+  const tourId = Number(tour?.supabaseId);
+  if (!tourId || state.lostBallsSavingKey) return;
+
+  const key = `${playerId}:${courseId}`;
+  state.lostBallsSavingKey = key;
+  state.lostBallsError = "";
+  render();
+
+  try {
+    const rows = state.lostBallsByTourId[tourId] || [];
+    const existing = lostBallRowFor(rows, playerId, courseId);
+    const currentCount = Math.max(0, Number(existing?.number_of_lost_balls || 0));
+    const nextCount = Math.max(0, currentCount + Number(delta || 0));
+
+    if (existing?.id) {
+      await supabaseWrite(`lost_balls?id=eq.${encodeURIComponent(existing.id)}`, {
+        method: "PATCH",
+        body: { number_of_lost_balls: nextCount },
+      });
+    } else {
+      await supabaseWrite("lost_balls", {
+        body: {
+          player_id: Number(playerId),
+          tour_id: tourId,
+          course_id: Number(courseId),
+          number_of_lost_balls: nextCount,
+        },
+      });
+    }
+
+    await loadLostBalls(tour, { force: true, seedMissing: false });
+  } catch (error) {
+    console.warn(error);
+    state.lostBallsError = "Could not save lost balls.";
+  } finally {
+    state.lostBallsSavingKey = "";
+    render();
+  }
+}
+
 async function loadIndividualMatches() {
   const playerId = state.selectedIndividualPlayerId;
   if (!playerId) return;
@@ -1043,6 +1159,9 @@ async function loadSupabaseData() {
     if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel === "random-nudger-generator") {
       loadTourProfiles(tours[0]?.supabaseId);
     }
+    if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel === "lost-balls") {
+      loadLostBalls(tours[0]);
+    }
     if (state.tab === "media") {
       loadMediaLibrary();
     }
@@ -1157,6 +1276,10 @@ let state = {
   itinerarySaving: false,
   itineraryDayIndex: 0,
   itineraryEditor: null,
+  lostBallsByTourId: {},
+  lostBallsLoadingTourId: null,
+  lostBallsSavingKey: "",
+  lostBallsError: "",
   hallOfFameRows: [],
   hallOfFameLoading: false,
   hallOfFameLoaded: false,
@@ -2931,6 +3054,7 @@ const thisTourOverviewActions = [
   ["Borth Course Guide", "image", "borth-course-guide"],
   ["Tee Times", "flag", "tee-times"],
   ["Scorecards", "badge", "scorecards"],
+  ["Lost Balls", "ball", "lost-balls"],
   ["Random Nudger Generator", "shuffle", "random-nudger-generator"],
 ];
 
@@ -2942,8 +3066,16 @@ function currentTourPageYear() {
   return Number(state.thisTourOverviewYear || tours[0]?.year);
 }
 
+function shortCourseName(courseName = "") {
+  return String(courseName || "")
+    .replace(/\s+Golf\s+Club\b/i, "")
+    .replace(/\s+Golf\s+Course\b/i, "")
+    .trim();
+}
+
 function firstNameForPlayer(player = {}) {
-  return String(player.player_name || "Nudger").trim().split(/\s+/)[0] || "Nudger";
+  const safePlayer = player || {};
+  return String(safePlayer.player_name || "Nudger").trim().split(/\s+/)[0] || "Nudger";
 }
 
 function firstNameFromName(name = "") {
@@ -3794,6 +3926,10 @@ function ThisTourOverviewFeature() {
     `;
   }
 
+  if (pageKey === "lost-balls") {
+    return LostBallsPage(tours[0]);
+  }
+
   const cacheKey = tourPageCacheKey(year, pageKey);
   const page = state.tourPagesByKey[cacheKey];
   const blocks = normaliseTourPageContent(page?.content);
@@ -3838,6 +3974,123 @@ function ThisTourOverviewFeature() {
 function ThisTourOverview() {
   return `
     <div class="action-grid this-tour-overview">${thisTourOverviewActions.map(([label, iconName, view]) => ActionTile(label, iconName, view)).join("")}</div>
+  `;
+}
+
+function lostBallRoundDate(tour, day) {
+  if (!tour?.startDate || !day) return "";
+  const date = new Date(`${tour.startDate}T00:00:00`);
+  date.setDate(date.getDate() + Number(day || 1) - 1);
+  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" }).format(date);
+}
+
+function lostBallSummary(rows = [], playerEntries = []) {
+  const totalsByPlayer = playerEntries.map(({ player }) => {
+    const total = rows
+      .filter((row) => Number(row.player_id) === Number(player.id))
+      .reduce((sum, row) => sum + Number(row.number_of_lost_balls || 0), 0);
+    return { player, total };
+  });
+  const totalLostBalls = totalsByPlayer.reduce((sum, row) => sum + row.total, 0);
+  const worst = totalsByPlayer.reduce((leader, row) => (row.total > leader.total ? row : leader), { player: null, total: 0 });
+  return {
+    totalLostBalls,
+    worst,
+    average: playerEntries.length ? totalLostBalls / playerEntries.length : 0,
+  };
+}
+
+function LostBallsPage(tour = tours[0]) {
+  const tourId = Number(tour?.supabaseId);
+  const rows = state.lostBallsByTourId[tourId] || [];
+  const rounds = roundsForTour(tour);
+  const playerEntries = playersForTour(tour);
+  const summary = lostBallSummary(rows, playerEntries);
+  const isLoading = state.lostBallsLoadingTourId === tourId || state.tourProfilesLoadingTourId === tourId;
+
+  if (isLoading && !rows.length) {
+    return `
+      <section class="overview-feature-screen lost-balls-screen">
+        <div class="lost-balls-topbar">
+          <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
+          <div><h1>Lost Balls</h1><p>${escapeHtml(tour?.year || "")} ${escapeHtml(tourDisplayName(tour))}</p></div>
+        </div>
+        ${Card(`<p class="empty-state">Loading lost balls...</p>`)}
+      </section>
+    `;
+  }
+
+  return `
+    <section class="overview-feature-screen lost-balls-screen">
+      <div class="lost-balls-topbar">
+        <button class="overview-feature-back" data-action="overview-back" aria-label="Back to overview">${icon("back")}</button>
+        <div class="lost-balls-title">
+          <span>${icon("ball")}</span>
+          <div>
+            <h1>Lost Balls</h1>
+            <p>${escapeHtml(tour?.year || "")} ${escapeHtml(tourDisplayName(tour))}</p>
+          </div>
+        </div>
+        <small>${state.lostBallsSavingKey ? "Saving..." : "Auto-saved"}</small>
+      </div>
+      ${state.lostBallsError ? Card(`<p class="empty-state">${escapeHtml(state.lostBallsError)}</p>`) : ""}
+      <div class="lost-balls-stats">
+        <div><span>${icon("ball")}</span><strong>${summary.totalLostBalls}</strong><small>Total lost balls</small></div>
+        <div><span>${icon("trophy")}</span><strong>${summary.worst.total ? escapeHtml(firstNameForPlayer(summary.worst.player)) : "-"}</strong><small>Worst offender (${summary.worst.total})</small></div>
+        <div><span>${icon("chart")}</span><strong>${summary.average.toFixed(1)}</strong><small>Average per player</small></div>
+      </div>
+      <div class="lost-balls-rounds">
+        ${rounds.map((course, index) => `
+          <div>
+            <strong>Day ${index + 1}</strong>
+            <span>${escapeHtml(shortCourseName(course.course_name))}</span>
+            <small>${escapeHtml(lostBallRoundDate(tour, course.day))}</small>
+          </div>
+        `).join("")}
+      </div>
+      <div class="lost-balls-table-wrap">
+        <table class="lost-balls-table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              ${rounds.map((course, index) => `<th>Day ${index + 1}<small>${escapeHtml(shortCourseName(course.course_name))}</small></th>`).join("")}
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${playerEntries.map(({ player }) => {
+              const total = rounds.reduce((sum, course) => sum + Number(lostBallRowFor(rows, player.id, course.id)?.number_of_lost_balls || 0), 0);
+              return `
+                <tr>
+                  <th>
+                    <div class="lost-balls-player">
+                      ${Avatar(player)}
+                      <span><b>${escapeHtml(player.player_name)}</b>${playerNickname(player) ? `<small>"${escapeHtml(playerNickname(player))}"</small>` : ""}</span>
+                    </div>
+                  </th>
+                  ${rounds.map((course) => {
+                    const row = lostBallRowFor(rows, player.id, course.id);
+                    const count = Number(row?.number_of_lost_balls || 0);
+                    const key = `${player.id}:${course.id}`;
+                    const saving = state.lostBallsSavingKey === key;
+                    return `
+                      <td>
+                        <div class="lost-balls-stepper ${saving ? "saving" : ""}">
+                          <button data-action="lost-balls-change" data-player-id="${player.id}" data-course-id="${course.id}" data-delta="-1" type="button" ${count <= 0 || saving ? "disabled" : ""}>-</button>
+                          <strong>${count}</strong>
+                          <button data-action="lost-balls-change" data-player-id="${player.id}" data-course-id="${course.id}" data-delta="1" type="button" ${saving ? "disabled" : ""}>+</button>
+                        </div>
+                      </td>
+                    `;
+                  }).join("")}
+                  <td><b class="${total >= 6 ? "danger-total" : ""}">${total}</b></td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
   `;
 }
 
@@ -6312,6 +6565,8 @@ app.addEventListener("click", (event) => {
       loadTourProfiles(tours[0]?.supabaseId);
     } else if (state.thisTourOverviewPanel === "itinerary") {
       loadItinerary(currentTourPageYear());
+    } else if (state.thisTourOverviewPanel === "lost-balls") {
+      loadLostBalls(tours[0]);
     } else if (!["scorecards"].includes(state.thisTourOverviewPanel) && !isCourseGuidePanel(state.thisTourOverviewPanel)) {
       loadTourPage(currentTourPageYear(), state.thisTourOverviewPanel, formatOverviewFeatureTitle(state.thisTourOverviewPanel));
     }
@@ -6368,6 +6623,10 @@ app.addEventListener("click", (event) => {
   }
   if (action === "delete-itinerary-item") {
     saveItineraryEditor(true);
+    return;
+  }
+  if (action === "lost-balls-change") {
+    updateLostBalls(target.dataset.playerId, target.dataset.courseId, target.dataset.delta);
     return;
   }
   if (action === "open-course-scorecard") {
