@@ -1157,7 +1157,8 @@ async function loadSupabaseData() {
       loadTourProfiles(tours[0]?.supabaseId);
     }
     if (state.tab === "this-tour" && state.detailSubTab === "Overview" && !state.thisTourOverviewPanel) {
-      loadItinerary(currentTourPageYear());
+      state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
+      loadItinerary(tours[0]?.year);
       loadTourProfiles(tours[0]?.supabaseId);
     }
     if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel === "random-nudger-generator") {
@@ -1680,15 +1681,16 @@ function itineraryPreviewItems(rows = [], now = new Date()) {
 
 function ThisTourItineraryPreview(tour) {
   const year = Number(tour?.year || currentTourPageYear());
+  const hasLoadedRows = Object.prototype.hasOwnProperty.call(state.itineraryRowsByYear, year);
   const rows = state.itineraryRowsByYear[year] || [];
   const previewItems = itineraryPreviewItems(rows);
 
-  if (state.itineraryLoadingYear === year && !rows.length) {
+  if ((!hasLoadedRows || state.itineraryLoadingYear === year) && !rows.length) {
     return `<div class="tour-card-mini-list"><span>Loading itinerary...</span></div>`;
   }
 
   if (!previewItems.length) {
-    return `<div class="tour-card-mini-list"><span>No itinerary loaded yet.</span></div>`;
+    return `<div class="tour-card-mini-list"><span>No itinerary items yet.</span></div>`;
   }
 
   return `
@@ -4047,26 +4049,22 @@ function ThisTourOverviewFeature() {
 
 function ThisTourOverview() {
   const tour = tours[0];
-  const playerCount = playersForTour(tour).length || Number(tour?.playerCount || 20);
   return `
     <div class="this-tour-dashboard">
       <button class="this-tour-card this-tour-card-itinerary" data-action="overview-panel" data-view="itinerary" type="button">
         <span class="tour-card-icon">${icon("calendar")}</span>
-        <span class="tour-card-live">Live</span>
         <strong>Itinerary</strong>
         <small>${escapeHtml(tour?.dates || "")}</small>
         ${ThisTourItineraryPreview(tour)}
         <span class="tour-card-link">View full itinerary ${icon("chevron")}</span>
       </button>
       <button class="this-tour-card this-tour-card-photo" data-action="overview-panel" data-view="borth-course-guide" type="button" style="--tour-card-image: url('/assets/images/course-guides/borth-overview.jpg')">
-        <span class="tour-card-badge">Links course</span>
         <span class="tour-card-icon">${icon("flag")}</span>
         <strong>Borth<br />Course Guide</strong>
         <small>Full course guide and hole-by-hole info</small>
         <span class="tour-card-link">View guide ${icon("chevron")}</span>
       </button>
       <button class="this-tour-card this-tour-card-photo" data-action="overview-panel" data-view="aberdovey-course-guide" type="button" style="--tour-card-image: url('/assets/images/course-guides/aberdovey-overview.jpg')">
-        <span class="tour-card-badge">18 holes</span>
         <span class="tour-card-icon">${icon("pin")}</span>
         <strong>Aberdovey<br />Course Guide</strong>
         <small>Your complete guide to Aberdovey Golf Club</small>
@@ -4079,7 +4077,6 @@ function ThisTourOverview() {
         <span class="tour-card-link">Open tracker ${icon("chevron")}</span>
       </button>
       <button class="this-tour-card this-tour-card-profiles" data-action="detail-subtab" data-tab="Profiles" type="button">
-        <span class="tour-card-count">${playerCount}</span>
         <span class="tour-card-icon">${icon("people")}</span>
         ${ThisTourProfilesPreview(tour)}
         <strong>Profiles</strong>
@@ -6548,6 +6545,8 @@ app.addEventListener("click", (event) => {
     if (state.tab === "this-tour") {
       state.detailSubTab = "Overview";
       state.thisTourOverviewPanel = "";
+      state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
+      loadItinerary(tours[0]?.year);
       loadTourProfiles(tours[0]?.supabaseId);
     }
     if (state.tab === "profiles") {
@@ -6646,6 +6645,8 @@ app.addEventListener("click", (event) => {
     state.detailTour = null;
     state.detailSubTab = "Overview";
     state.thisTourOverviewPanel = "";
+    state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
+    loadItinerary(tours[0]?.year);
     loadTourProfiles(tours[0]?.supabaseId);
   }
   if (action === "refresh-app-update") {

@@ -1922,20 +1922,20 @@ svg {
 
 .this-tour-dashboard {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
-  gap: 10px;
-  margin-top: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .this-tour-card {
   position: relative;
   display: flex;
-  min-height: 126px;
+  min-height: 104px;
   overflow: hidden;
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-end;
-  padding: 14px;
+  padding: 12px;
   background:
     radial-gradient(circle at 12% 8%, rgba(24, 92, 62, .58), transparent 42%),
     linear-gradient(145deg, #0d3627, #061f16 68%);
@@ -1966,7 +1966,7 @@ svg {
 
 .this-tour-card strong {
   color: var(--cream);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 950;
   line-height: .98;
   letter-spacing: 0;
@@ -1974,18 +1974,18 @@ svg {
 }
 
 .this-tour-card small {
-  margin-top: 8px;
+  margin-top: 5px;
   color: rgba(248, 242, 223, .78);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
   line-height: 1.25;
 }
 
 .tour-card-icon {
   display: grid;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 10px;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 8px;
   place-items: center;
   background: rgba(7, 34, 24, .76);
   border: 1px solid rgba(208, 173, 103, .54);
@@ -1994,8 +1994,8 @@ svg {
 }
 
 .tour-card-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 17px;
+  height: 17px;
 }
 
 .tour-card-link {
@@ -2003,7 +2003,7 @@ svg {
   align-items: center;
   gap: 5px;
   margin-top: auto;
-  padding-top: 12px;
+  padding-top: 8px;
   color: var(--gold-soft);
   font-size: 10px;
   font-weight: 950;
@@ -2016,26 +2016,9 @@ svg {
   height: 13px;
 }
 
-.tour-card-badge,
-.tour-card-live,
-.tour-card-count {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 2;
-  padding: 5px 8px;
-  background: var(--gold);
-  border-radius: 999px;
-  color: #062016;
-  font-size: 9px;
-  font-weight: 950;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
 .this-tour-card-itinerary {
   grid-row: span 2;
-  min-height: 262px;
+  min-height: 216px;
 }
 
 .this-tour-card-itinerary::before {
@@ -2049,29 +2032,29 @@ svg {
 .tour-card-mini-list {
   display: grid;
   width: 100%;
-  gap: 12px;
-  margin: 14px 0 4px;
-  padding-left: 9px;
+  gap: 8px;
+  margin: 10px 0 2px;
+  padding-left: 8px;
   border-left: 1px solid rgba(208, 173, 103, .5);
 }
 
 .tour-card-mini-list > div {
   display: grid;
-  grid-template-columns: 44px 1fr;
-  gap: 10px;
+  grid-template-columns: 36px 1fr;
+  gap: 8px;
   align-items: start;
 }
 
 .tour-card-mini-list time {
   color: var(--gold-soft);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 900;
 }
 
 .tour-card-mini-list strong {
   display: block;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2082,7 +2065,7 @@ svg {
   overflow: hidden;
   margin-top: 3px;
   color: rgba(248, 242, 223, .62);
-  font-size: 10px;
+  font-size: 8px;
   line-height: 1.2;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -2094,7 +2077,7 @@ svg {
 }
 
 .this-tour-card-photo {
-  min-height: 126px;
+  min-height: 104px;
 }
 
 .this-tour-card-lost::before,
@@ -2103,29 +2086,28 @@ svg {
 }
 
 .this-tour-card-profiles {
-  min-height: 148px;
+  min-height: 104px;
 }
 
 .tour-card-avatars {
-  position: absolute;
-  top: 32px;
-  right: 12px;
-  left: 54px;
+  position: relative;
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 0;
+  max-width: 112px;
+  margin: 0 0 8px 6px;
 }
 
 .tour-card-avatars span {
   display: grid;
-  width: 34px;
-  height: 34px;
-  margin-left: -9px;
+  width: 25px;
+  height: 25px;
+  margin-left: -6px;
   place-items: center;
   overflow: hidden;
   background: #173b2b;
-  border: 2px solid rgba(248, 242, 223, .8);
+  border: 1px solid rgba(248, 242, 223, .8);
   border-radius: 50%;
   color: var(--cream);
   font-size: 10px;
