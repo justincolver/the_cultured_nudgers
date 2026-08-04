@@ -1659,6 +1659,23 @@ function itineraryItemDateTime(row = {}) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function localDateKey(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function itineraryPreviewDayLabel(date = "") {
+  if (!date) return "";
+  const day = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(day.getTime())) return "";
+  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long" }).format(day).toUpperCase();
+  const month = new Intl.DateTimeFormat("en-GB", { month: "short" }).format(day).toUpperCase();
+  return `${weekday}, ${month} ${day.getDate()}`;
+}
+
 function itineraryPreviewItems(rows = [], now = new Date()) {
   const items = rows
     .filter((row) => row?.date && row?.time_from)
@@ -1670,13 +1687,24 @@ function itineraryPreviewItems(rows = [], now = new Date()) {
     .filter((row) => row.startsAt)
     .sort((a, b) => a.startsAt - b.startsAt || Number(a.id || 0) - Number(b.id || 0));
 
-  const activeIndex = items.findIndex((row) => row.endsAt && row.startsAt <= now && row.endsAt >= now);
-  const nextIndex = items.findIndex((row) => row.startsAt >= now);
-  const startIndex = activeIndex >= 0 ? activeIndex : nextIndex >= 0 ? nextIndex : Math.max(items.length - 3, 0);
-  return items.slice(startIndex, startIndex + 3).map((row, index) => ({
+  const today = localDateKey(now);
+  const previewDate = items.some((row) => row.date === today)
+    ? today
+    : items.find((row) => row.startsAt >= now)?.date || items.at(-1)?.date || "";
+  const dayItems = items.filter((row) => row.date === previewDate);
+  const activeIndex = dayItems.findIndex((row) => row.endsAt && row.startsAt <= now && row.endsAt >= now);
+  const nextIndex = previewDate === today ? dayItems.findIndex((row) => row.startsAt >= now) : -1;
+  const startIndex = activeIndex >= 0 ? activeIndex : nextIndex >= 0 ? nextIndex : previewDate === today ? Math.max(dayItems.length - 3, 0) : 0;
+
+  return dayItems.slice(startIndex, startIndex + 3).map((row, index) => ({
     ...row,
     isLive: activeIndex >= 0 && index === 0,
   }));
+}
+
+function itineraryPreviewSubtitle(rows = [], now = new Date()) {
+  const previewItem = itineraryPreviewItems(rows, now)[0];
+  return itineraryPreviewDayLabel(previewItem?.date);
 }
 
 function ThisTourItineraryPreview(tour) {
@@ -4050,12 +4078,14 @@ function ThisTourOverviewFeature() {
 
 function ThisTourOverview() {
   const tour = tours[0];
+  const itineraryRows = state.itineraryRowsByYear[Number(tour?.year || currentTourPageYear())] || [];
+  const itinerarySubtitle = itineraryPreviewSubtitle(itineraryRows);
   return `
     <div class="this-tour-dashboard">
       <button class="this-tour-card this-tour-card-itinerary" data-action="overview-panel" data-view="itinerary" type="button">
         <span class="tour-card-icon">${icon("calendar")}</span>
         <strong>Itinerary</strong>
-        <small>${escapeHtml(tour?.dates || "")}</small>
+        <small>${escapeHtml(itinerarySubtitle || "Loading itinerary...")}</small>
         ${ThisTourItineraryPreview(tour)}
         <span class="tour-card-link">View full itinerary ${icon("chevron")}</span>
       </button>
