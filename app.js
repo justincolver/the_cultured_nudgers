@@ -1156,6 +1156,10 @@ async function loadSupabaseData() {
     if (state.tab === "this-tour" && ["Teams", "Profiles", "Roles"].includes(state.detailSubTab)) {
       loadTourProfiles(tours[0]?.supabaseId);
     }
+    if (state.tab === "this-tour" && state.detailSubTab === "Overview" && !state.thisTourOverviewPanel) {
+      loadItinerary(currentTourPageYear());
+      loadTourProfiles(tours[0]?.supabaseId);
+    }
     if (state.tab === "this-tour" && state.detailSubTab === "Overview" && state.thisTourOverviewPanel === "random-nudger-generator") {
       loadTourProfiles(tours[0]?.supabaseId);
     }
@@ -1393,7 +1397,7 @@ function HomeAppUpdateNotice() {
         </article>
         <article>
           <strong>🎲 Random Nudger Generator</strong>
-          <p>Need to pick a Nudger for rooms or forfeits. Let fate decide. Found on the THIS TOUR tab.</p>
+          <p>Need to pick a Nudger for rooms or forfeits. Let fate decide. Found under ☰ Menu on the Home tab.</p>
         </article>
       </div>
     </section>
@@ -1411,6 +1415,7 @@ function HomeMenuButton() {
       <div class="home-menu">
         <button data-action="open-menu-page" data-tab="media" type="button">${icon("image")}<span>Media</span></button>
         <button data-action="open-menu-page" data-tab="hall-of-fame" type="button">${icon("trophy")}<span>Hall of Fame</span></button>
+        <button data-action="open-random-nudger" type="button">${icon("shuffle")}<span>Random Nudger Generator</span></button>
         <button data-action="logout" type="button">${icon("logout")}<span>Log Out</span></button>
       </div>
     ` : ""}
@@ -1644,6 +1649,75 @@ function StatCard(label, value, detail, image) {
 
 function ActionTile(label, iconName, view) {
   return `<button class="action-tile" data-action="overview-panel" data-view="${view}">${icon(iconName)}<span>${label}</span></button>`;
+}
+
+function itineraryItemDateTime(row = {}) {
+  if (!row.date) return null;
+  const time = row.time_from || "00:00:00";
+  const date = new Date(`${row.date}T${time}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function itineraryPreviewItems(rows = [], now = new Date()) {
+  const items = rows
+    .filter((row) => row?.date && row?.time_from)
+    .map((row) => ({
+      ...row,
+      startsAt: itineraryItemDateTime(row),
+      endsAt: row.time_to ? new Date(`${row.date}T${row.time_to}`) : null,
+    }))
+    .filter((row) => row.startsAt)
+    .sort((a, b) => a.startsAt - b.startsAt || Number(a.id || 0) - Number(b.id || 0));
+
+  const activeIndex = items.findIndex((row) => row.endsAt && row.startsAt <= now && row.endsAt >= now);
+  const nextIndex = items.findIndex((row) => row.startsAt >= now);
+  const startIndex = activeIndex >= 0 ? activeIndex : nextIndex >= 0 ? nextIndex : Math.max(items.length - 3, 0);
+  return items.slice(startIndex, startIndex + 3).map((row, index) => ({
+    ...row,
+    isLive: activeIndex >= 0 && index === 0,
+  }));
+}
+
+function ThisTourItineraryPreview(tour) {
+  const year = Number(tour?.year || currentTourPageYear());
+  const rows = state.itineraryRowsByYear[year] || [];
+  const previewItems = itineraryPreviewItems(rows);
+
+  if (state.itineraryLoadingYear === year && !rows.length) {
+    return `<div class="tour-card-mini-list"><span>Loading itinerary...</span></div>`;
+  }
+
+  if (!previewItems.length) {
+    return `<div class="tour-card-mini-list"><span>No itinerary loaded yet.</span></div>`;
+  }
+
+  return `
+    <div class="tour-card-mini-list">
+      ${previewItems.map((row, index) => `
+        <div class="${row.isLive || index === 0 ? "current" : ""}">
+          <time>${escapeHtml(formatItineraryTime(row.time_from))}</time>
+          <span>
+            <strong>${escapeHtml(row.header || "Itinerary item")}</strong>
+            <small>${escapeHtml(row.text || itineraryDayHeading(row.date))}</small>
+          </span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function ThisTourProfilesPreview(tour) {
+  const playerEntries = playersForTour(tour).slice(0, 9);
+  if (!playerEntries.length) return "";
+
+  return `
+    <div class="tour-card-avatars" aria-hidden="true">
+      ${playerEntries.map(({ player }) => {
+        const headshot = headshotForPlayer(player);
+        return `<span>${headshot ? `<img src="${headshot}" alt="" />` : escapeHtml(getInitials(player.player_name))}</span>`;
+      }).join("")}
+    </div>
+  `;
 }
 
 const aberdoveyCourseHoles = [
@@ -3972,8 +4046,47 @@ function ThisTourOverviewFeature() {
 }
 
 function ThisTourOverview() {
+  const tour = tours[0];
+  const playerCount = playersForTour(tour).length || Number(tour?.playerCount || 20);
   return `
-    <div class="action-grid this-tour-overview">${thisTourOverviewActions.map(([label, iconName, view]) => ActionTile(label, iconName, view)).join("")}</div>
+    <div class="this-tour-dashboard">
+      <button class="this-tour-card this-tour-card-itinerary" data-action="overview-panel" data-view="itinerary" type="button">
+        <span class="tour-card-icon">${icon("calendar")}</span>
+        <span class="tour-card-live">Live</span>
+        <strong>Itinerary</strong>
+        <small>${escapeHtml(tour?.dates || "")}</small>
+        ${ThisTourItineraryPreview(tour)}
+        <span class="tour-card-link">View full itinerary ${icon("chevron")}</span>
+      </button>
+      <button class="this-tour-card this-tour-card-photo" data-action="overview-panel" data-view="borth-course-guide" type="button" style="--tour-card-image: url('/assets/images/course-guides/borth-overview.jpg')">
+        <span class="tour-card-badge">Links course</span>
+        <span class="tour-card-icon">${icon("flag")}</span>
+        <strong>Borth<br />Course Guide</strong>
+        <small>Full course guide and hole-by-hole info</small>
+        <span class="tour-card-link">View guide ${icon("chevron")}</span>
+      </button>
+      <button class="this-tour-card this-tour-card-photo" data-action="overview-panel" data-view="aberdovey-course-guide" type="button" style="--tour-card-image: url('/assets/images/course-guides/aberdovey-overview.jpg')">
+        <span class="tour-card-badge">18 holes</span>
+        <span class="tour-card-icon">${icon("pin")}</span>
+        <strong>Aberdovey<br />Course Guide</strong>
+        <small>Your complete guide to Aberdovey Golf Club</small>
+        <span class="tour-card-link">View guide ${icon("chevron")}</span>
+      </button>
+      <button class="this-tour-card this-tour-card-lost" data-action="overview-panel" data-view="lost-balls" type="button">
+        <span class="tour-card-icon">${icon("ball")}</span>
+        <strong>Lost Balls</strong>
+        <small>Track the damage across all rounds</small>
+        <span class="tour-card-link">Open tracker ${icon("chevron")}</span>
+      </button>
+      <button class="this-tour-card this-tour-card-profiles" data-action="detail-subtab" data-tab="Profiles" type="button">
+        <span class="tour-card-count">${playerCount}</span>
+        <span class="tour-card-icon">${icon("people")}</span>
+        ${ThisTourProfilesPreview(tour)}
+        <strong>Profiles</strong>
+        <small>Meet the tourists</small>
+        <span class="tour-card-link">View profiles ${icon("chevron")}</span>
+      </button>
+    </div>
   `;
 }
 
@@ -6475,6 +6588,27 @@ app.addEventListener("click", (event) => {
     state.homeMenuOpen = false;
     if (state.tab === "media") loadMediaLibrary();
     if (state.tab === "hall-of-fame") loadHallOfFame();
+  }
+  if (action === "open-random-nudger") {
+    if (randomNudgerSpinTimer) window.clearTimeout(randomNudgerSpinTimer);
+    randomNudgerSpinTimer = null;
+    state.restoredScrollTop = 0;
+    state.tab = "this-tour";
+    state.detailTour = null;
+    state.detailSubTab = "Overview";
+    state.thisTourOverviewYear = Number(tours[0]?.year) || state.thisTourOverviewYear;
+    state.thisTourOverviewPanel = "random-nudger-generator";
+    state.selectedCourseGuideHole = null;
+    state.matchReportOpenYear = null;
+    state.touristProfileOpen = false;
+    state.touristProfileReturn = null;
+    state.touristToursOverlayOpen = false;
+    state.individualDetailKey = "";
+    state.rivalsOverlayOpen = false;
+    state.statsOverlayKey = "";
+    state.homeMenuOpen = false;
+    state.randomNudgerDraw = emptyRandomNudgerDraw(state.randomNudgerDraw?.mode || "pairs");
+    loadTourProfiles(tours[0]?.supabaseId);
   }
   if (action === "dismiss-birthday-overlay") {
     state.birthdayOverlayDismissed = true;
